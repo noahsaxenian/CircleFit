@@ -15,7 +15,7 @@ siemens_fit = pd.read_csv(file_path, delimiter='\t')
 freqs = [229, 287, 533, 671, 893, 1068, 1131, 1305, 1457, 1717, 1857]
 points = [10, 5, 5, 5, 5, 5, 5, 8, 5, 5, 3]
 
-freq_range = [150, 2000]
+freq_range = [200, 2000]
 
 filtered_data = data[(data['freq (Hz)'] >= freq_range[0]) & (data['freq (Hz)'] <= freq_range[1])]
 siemens_fit = siemens_fit[(siemens_fit['freq (Hz)'] >= freq_range[0]) & (siemens_fit['freq (Hz)'] <= freq_range[1])]
@@ -62,60 +62,61 @@ siemens_mag = np.sqrt(siemens_real**2 + siemens_imag**2)
 siemens_phase = np.arctan2(siemens_imag, siemens_real)
 
 
-#plot
-fig = plt.figure(figsize=(50, 20))
-gs = gridspec.GridSpec(4, 1)
-# Create the first subplot (3/4 of the area)
-ax1 = fig.add_subplot(gs[0:3, 0])
-ax1.plot(frequencies, magnitude, label='Simulated')
-ax1.plot(data_freqs, data_mag, 'x', label='Experimental')
-#ax1.plot(siemens_freqs, siemens_mag, label='Siemens Fit')
-ax1.set_xlabel('Frequency (ω)')
-ax1.set_ylabel('Magnitude')
-ax1.set_title('Magnitude')
-ax1.legend()
-ax1.grid(True)
 
-# Create the second subplot (1/4 of the area)
-ax2 = fig.add_subplot(gs[3, 0])
-ax2.plot(frequencies, phase, label='Simulated')
-ax2.plot(data_freqs, data_phase, 'x', label='Experimental')
-#ax2.plot(siemens_freqs, siemens_phase, label='Siemens Fit')
-ax2.set_xlabel('Frequency (ω)')
-ax2.set_ylabel('Phase')
-ax2.set_title('Phase')
-ax2.legend()
-ax2.grid(True)
+def plot_mag_and_phase():
+    fig = plt.figure(figsize=(25, 15))
+    gs = gridspec.GridSpec(4, 1)
+    # Create the first subplot (3/4 of the area)
+    ax1 = fig.add_subplot(gs[0:3, 0])
+    ax1.plot(frequencies, magnitude, label='Simulated')
+    ax1.plot(data_freqs, data_mag, 'x', label='Experimental')
+    #ax1.plot(siemens_freqs, siemens_mag, label='Siemens Fit')
+    ax1.set_xlabel('Frequency (ω)')
+    ax1.set_ylabel('Magnitude')
+    ax1.legend()
+    ax1.grid(True)
 
-# Adjust layout
-plt.tight_layout()
-plt.show()
+    # Create the second subplot (1/4 of the area)
+    ax2 = fig.add_subplot(gs[3, 0])
+    ax2.plot(frequencies, phase, label='Simulated')
+    ax2.plot(data_freqs, data_phase, 'x', label='Experimental')
+    #ax2.plot(siemens_freqs, siemens_phase, label='Siemens Fit')
+    ax2.set_xlabel('Frequency (ω)')
+    ax2.set_ylabel('Phase')
+    ax2.legend()
+    ax2.grid(True)
+
+    # Adjust layout
+    plt.tight_layout()
+    plt.show()
+
+def plot_real_and_imag():
+    fig = plt.figure(figsize=(25, 15))
+    gs = gridspec.GridSpec(4, 1)
+    # Create the first subplot (3/4 of the area)
+    ax1 = fig.add_subplot(gs[0:2, 0])
+    ax1.plot(frequencies, real, label='Simulated')
+    ax1.plot(data_freqs, data_real, 'x', label='Experimental')
+    #ax1.plot(siemens_freqs, siemens_mag, label='Siemens Fit')
+    ax1.set_xlabel('Frequency (ω)')
+    ax1.set_ylabel('Real')
+    ax1.legend()
+    ax1.grid(True)
+
+    # Create the second subplot (1/4 of the area)
+    ax2 = fig.add_subplot(gs[2:4, 0])
+    ax2.plot(frequencies, imag, label='Simulated')
+    ax2.plot(data_freqs, data_imag, 'x', label='Experimental')
+    #ax2.plot(siemens_freqs, siemens_phase, label='Siemens Fit')
+    ax2.set_xlabel('Frequency (ω)')
+    ax2.set_ylabel('Imaginary')
+    ax2.legend()
+    ax2.grid(True)
+
+    # Adjust layout
+    plt.tight_layout()
+    plt.show()
 
 
-fig = plt.figure(figsize=(50, 20))
-gs = gridspec.GridSpec(4, 1)
-# Create the first subplot (3/4 of the area)
-ax1 = fig.add_subplot(gs[0:2, 0])
-ax1.plot(frequencies, real, label='Simulated')
-ax1.plot(data_freqs, data_real, 'x', label='Experimental')
-#ax1.plot(siemens_freqs, siemens_mag, label='Siemens Fit')
-ax1.set_xlabel('Frequency (ω)')
-ax1.set_ylabel('Magnitude')
-ax1.set_title('Magnitude')
-ax1.legend()
-ax1.grid(True)
-
-# Create the second subplot (1/4 of the area)
-ax2 = fig.add_subplot(gs[2, 0])
-ax2.plot(frequencies, imag, label='Simulated')
-ax2.plot(data_freqs, data_imag, 'x', label='Experimental')
-#ax2.plot(siemens_freqs, siemens_phase, label='Siemens Fit')
-ax2.set_xlabel('Frequency (ω)')
-ax2.set_ylabel('Phase')
-ax2.set_title('Phase')
-ax2.legend()
-ax2.grid(True)
-
-# Adjust layout
-plt.tight_layout()
-plt.show()
+plot_mag_and_phase()
+#plot_real_and_imag()
