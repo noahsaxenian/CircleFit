@@ -24,9 +24,6 @@ for freq in freqs:
     mode.choose_points()
     modes.append(mode)
 
-modes[0].plot_angles()
-
-
 frequencies = np.linspace(freq_range[0], freq_range[1], freq_range[1]-freq_range[0])
 omega = frequencies * 2 * np.pi
 alpha = np.zeros(len(frequencies)) + 0j

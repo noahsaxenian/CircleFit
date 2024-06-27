@@ -2,9 +2,11 @@ import numpy as np
 from scipy.optimize import least_squares
 from scipy.interpolate import UnivariateSpline
 import matplotlib.pyplot as plt
-#testing git changes
 
 class CircleFit:
+    '''Circle fitting class for a single mode
+    use run() if number of points surrounding each mode is already selected
+    use choose_points() to test out how number of points affects fit'''
     def __init__(self, data, freq_est, points=10):
         self.data = data
         self.freq_est = freq_est
@@ -29,45 +31,43 @@ class CircleFit:
         self.B = 0
 
     def run(self):
-        self.filter_by_points(self.points)
+        # Runs through necessary functions to find all parameters
+        self.filter_data(self.points)
         self.fit_circle()
         self.calculate_resonant_frequency()
         self.calculate_damping()
         self.calculate_modal_parameters()
 
-    def filter_data(self):
-        filtered_data = self.data[(self.data['freq (Hz)'] >= self.freq_min) & (self.data['freq (Hz)'] <= self.freq_max)]
-        self.freq = filtered_data['freq (Hz)']
-        self.real = filtered_data['real']
-        self.cplx = filtered_data['complex']
-        self.frequencies = self.freq.values
+    def filter_data(self, num_points):
+        ''' Filters data input to the inputted number of points
+        surrounding frequency estimate '''
 
-    def filter_by_points(self, num_points):
         # Find the index of the closest frequency to self.freq_est
         closest_index = np.abs(self.data['freq (Hz)'] - self.freq_est).idxmin()
-
         # Calculate the start and end indices
         start_index = max(0, closest_index - num_points)
         end_index = min(len(self.data) - 1, closest_index + num_points)
 
         # Filter the data
         filtered_data = self.data.iloc[start_index:end_index + 1]
-
         self.freq = filtered_data['freq (Hz)']
         self.real = filtered_data['real']
         self.cplx = filtered_data['complex']
         self.frequencies = self.freq.values
-
         self.freq_min = min(self.freq)
         self.freq_max = max(self.freq)
 
     @staticmethod
     def residuals(params, x, y):
+        # Used for circle fitting
         h, k, r = params
         return (x - h) ** 2 + (y - k) ** 2 - r ** 2
 
-
     def fit_circle(self):
+        ''' Function to fit circle
+        Kasa method gets initial guess
+        Least squares for final fit '''
+
         x = self.real
         y = self.cplx
 
@@ -75,20 +75,19 @@ class CircleFit:
         A = np.column_stack((x, y, np.ones_like(x)))
         b = x ** 2 + y ** 2
         c = np.linalg.lstsq(A, b, rcond=None)[0]
-
         h_kasa = 0.5 * c[0]
         k_kasa = 0.5 * c[1]
         r_kasa = np.sqrt(c[2] + h_kasa ** 2 + k_kasa ** 2)
-
         initial_guess = [h_kasa, k_kasa, r_kasa]
 
         # Perform least squares fitting
         result = least_squares(self.residuals, initial_guess, args=(x, y))
-
-        # Update circle parameters
         self.h, self.k, self.r = result.x
 
     def calculate_resonant_frequency(self):
+        ''' Evaluates angles from center of circle to each point
+        Fits a spline to the angles against frequencies
+        Take derivative, location of max rate of angle change is natural frequency '''
         raw_angles = np.arctan2(self.cplx - self.k, self.real - self.h) % (2 * np.pi)
         self.angles = np.unwrap(raw_angles)
         spline = UnivariateSpline(self.frequencies, self.angles, s=0)
@@ -101,34 +100,38 @@ class CircleFit:
         self.theta = spline(self.resonant_frequency)
 
     def calculate_damping(self):
-        # Split frequencies and angles into lower and higher arrays
+        '''Function to calculate damping
+        Calculates for each pair of points above and below resonant frequency
+        Finds average, standard dev'''
+
+        # Split frequencies and angles into lower and higher groups
         split = self.resonant_frequency
         lower_frequencies = self.frequencies[self.frequencies < split]
         higher_frequencies = self.frequencies[self.frequencies >= split]
         lower_angles = self.angles[self.frequencies < split]
         higher_angles = self.angles[self.frequencies >= split]
 
-        def damping(w_r, w_a, w_b, theta_a, theta_b):
-            return float((w_a ** 2 - w_b ** 2) / (w_r ** 2 * (np.tan(theta_a / 2) + np.tan(theta_b / 2))))
-
+        # Initialize array for damping coefficients
         damping_coeffs = []
         theta = self.theta
 
+        # Calculate coefficient for each pair
         for i in range(min(len(lower_angles), len(higher_angles))):
             w_a = higher_frequencies[i] * 2 * np.pi
             w_b = lower_frequencies[-i-1] * 2 * np.pi
             theta_a = abs(higher_angles[i] - theta)
             theta_b = abs(lower_angles[-i-1] - theta)
-            #n = damping(self.resonant_frequency, w_a, w_b, theta_a, theta_b)
+            # Equation for damping coefficient
             n = (w_a ** 2 - w_b ** 2) / (self.omega ** 2 * (np.tan(theta_a / 2) + np.tan(theta_b / 2)))
             damping_coeffs.append(n)
-        #print(damping_coeffs)
 
         self.damping = np.mean(damping_coeffs)
         self.damping_std = np.std(damping_coeffs)
         return self.damping, self.damping_std
 
     def calculate_modal_parameters(self):
+        '''Calculates modal constant magnitude and phase
+        Calculates residual'''
         self.A = (self.omega ** 2) * self.damping * (2 * self.r)
         x_pos = self.h + self.r * np.cos(self.theta)
         y_pos = self.k + self.r * np.sin(self.theta)
@@ -141,6 +144,7 @@ class CircleFit:
 
 
     def plot_circle(self):
+        '''Create a nice plot of the fitted circle'''
         points = np.linspace(0, 2 * np.pi, 100)
         x_fit = self.h + self.r * np.cos(points)
         y_fit = self.k + self.r * np.sin(points)
@@ -160,6 +164,7 @@ class CircleFit:
         plt.show()
 
     def choose_points(self):
+        '''Allows the user to test out numbers of points to see how they look'''
         while True:
             self.points = int(input("Enter the number of points: "))
             self.run()

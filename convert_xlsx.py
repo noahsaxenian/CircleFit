@@ -1,3 +1,8 @@
+# This script filters a large xlsx file down to the desired rows and columns
+# renames headers to work with circle_fit library
+# converts mobility data to receptance
+# exports as tsv to be easily imported
+
 import pandas as pd
 import numpy as np
 
