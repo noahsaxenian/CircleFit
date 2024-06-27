@@ -31,6 +31,7 @@ modes = []
 for i in range(len(freqs)):
     mode = CircleFit(data, freqs[i], points[i])
     mode.run()
+    #mode.choose_points()
     modes.append(mode)
 
 

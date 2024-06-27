@@ -166,6 +166,7 @@ class CircleFit:
 
     def choose_points(self):
         '''Allows the user to test out numbers of points to see how they look'''
+        print('Performing circle fit at ' + str(self.freq_est) + ' Hz')
         while True:
             self.points = int(input("Enter the number of points: "))
             self.run()
