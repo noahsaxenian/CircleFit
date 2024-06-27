@@ -8,9 +8,9 @@ omega = frequencies * 2 * np.pi
 alpha = np.zeros(len(frequencies)) + 0j
 
 # enter [freq, A  , n    ]
-modes = [[500, 200, 0.02],
-         [600, 500, 0.035],
-         [3000, 1000, 0.005]
+modes = [[500, 200 + 20j, 0.02],
+         [600, 500 + 50j, 0.035],
+         [3000, 1000 + 100j, 0.005]
          ]
 
 for mode in modes:

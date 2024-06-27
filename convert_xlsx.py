@@ -14,11 +14,13 @@ sheet_name = 'SI FRFs and synthesized'  # Replace with the actual sheet name
 df = pd.read_excel(file_path, sheet_name=sheet_name, skiprows=232)  # Adjust skiprows as needed
 
 # Select the desired columns by their index (adjust column indices as necessary)
-data = df.iloc[:, [0, 1, 2]]  # Adjust indices to select correct columns
+data = df.iloc[:, [3, 4, 5]]  # Adjust indices to select correct columns
 
 # Rename the columns
 data.columns = ['freq (Hz)', 'real', 'complex']
+'''
 
+### Convert mobility to receptance
 # Extract frequency, real, and imaginary parts from the dataframe
 frequencies = data['freq (Hz)'].values
 real_parts = data['real'].values
@@ -38,10 +40,10 @@ result_df = pd.DataFrame({
     'freq (Hz)': frequencies,
     'real': receptance.real,
     'complex': receptance.imag
-})
+})'''
 
 # Save the receptance data to a new TSV file
-result_df.to_csv('C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point1_data_receptance.tsv', sep='\t', index=False)
+data.to_csv('C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point1_regenerated_receptance.tsv', sep='\t', index=False)
 
 # Print the result for verification
-print(result_df)
+print(data)

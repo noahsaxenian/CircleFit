@@ -130,12 +130,13 @@ class CircleFit:
         return self.damping, self.damping_std
 
     def calculate_modal_parameters(self):
-        '''Calculates modal constant magnitude and phase
-        Calculates residual'''
-        self.A = (self.omega ** 2) * self.damping * (2 * self.r)
+        ''' Calculates modal constant magnitude and phase
+        Calculates residual '''
+        magA = (self.omega ** 2) * self.damping * (2 * self.r)
         x_pos = self.h + self.r * np.cos(self.theta)
         y_pos = self.k + self.r * np.sin(self.theta)
-        self.phase = np.atan2(y_pos, x_pos)
+        self.phase = np.atan2(y_pos, x_pos) + np.pi / 2
+        self.A = magA * np.cos(self.phase) + 1j * magA * np.sin(self.phase)
 
         B_x = self.h + self.r * np.cos(self.theta + np.pi)
         B_y = self.k + self.r * np.sin(self.theta + np.pi)
