@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.fft import fft, fftfreq
-import pandas as pd
+import plotting
 
 
 def simulate_sdof_system(mass, spring_constant, damping, t_max=10, dt=0.0001, impulse_force=1.0):
@@ -37,6 +36,22 @@ def simulate_sdof_system(mass, spring_constant, damping, t_max=10, dt=0.0001, im
     plt.legend()
     plt.grid()
     plt.show()
+
+    # Compute FFT
+    fft_result = np.fft.fft(positions)
+
+    # Calculate frequencies
+    freq = np.fft.fftfreq(len(positions), d=dt)
+    positive_freq_indices = np.where(freq >= 0)
+    freq_positive = freq[positive_freq_indices]
+    fft_positive = fft_result[positive_freq_indices]
+
+    real = np.real(fft_positive)
+    imag = np.imag(fft_positive)
+    mag = np.sqrt(real ** 2 + imag ** 2)
+    phase = np.atan2(imag, real)
+
+    plotting.plot_mag_and_phase(freq_positive, mag, phase)
 
     return t, positions
 

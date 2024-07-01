@@ -3,9 +3,10 @@ from circle_fit import CircleFit
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+import peak_finder
 
 # Load your FRF data from a CSV file
-file_path = 'c:/Users/noahs/Documents/ceeo/modal stuff/Code/data/Plate/Plate 03/csv/fake_data_2.tsv'
+file_path = 'c:/Users/noahs/Documents/ceeo/modal stuff/Code/data/Plate/Plate 03/csv/fake_data_1.tsv'
 data = pd.read_csv(file_path, delimiter='\t')
 
 
@@ -13,19 +14,18 @@ data = pd.read_csv(file_path, delimiter='\t')
 freqs = [36, 108, 149]
 points = [10, 10, 10]
 
-freq_range = [0, 500]
+freq_range = [0, 5000]
 
 filtered_data = data[(data['freq (Hz)'] >= freq_range[0]) & (data['freq (Hz)'] <= freq_range[1])]
-#print(filtered_data)
+
+peaks, peak_ranges = peak_finder.peak_ranges(filtered_data, prom = 0.00001)
+
 
 modes = []
 
-for i in range(len(freqs)):
-    mode = CircleFit(data, freqs[i], points[i])
-    #mode.run()
+for i in range(len(peaks)):
+    mode = CircleFit(data, peaks[i], freq_range=peak_ranges[i])
     mode.choose_points()
-    #mode.plot_angles()
-    mode.plot_comparison()
     modes.append(mode)
 
 frequencies = np.linspace(freq_range[0], freq_range[1], freq_range[1]-freq_range[0])

@@ -1,20 +1,21 @@
 import numpy as np
 from scipy.optimize import least_squares
 from scipy.interpolate import UnivariateSpline
-from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
-from scipy.optimize import minimize
 
 class CircleFit:
     '''Circle fitting class for a single mode
     use run() if number of points surrounding each mode is already selected
     use choose_points() to test out how number of points affects fit'''
-    def __init__(self, data, freq_est, points=10):
+    def __init__(self, data, freq_est, points=10, freq_range=None):
         self.data = data
         self.freq_est = freq_est
         self.points = points
         self.freq_min = None
         self.freq_max = None
+        if freq_range:
+            self.freq_min = freq_range[0]
+            self.freq_max = freq_range[1]
         self.freq = None
         self.real = None
         self.cplx = None
@@ -33,6 +34,8 @@ class CircleFit:
         self.phase = None
         self.B = 0
 
+        self.filter_data_range()
+
     def run(self):
         # Runs through necessary functions to find all parameters
         self.filter_data(self.points)
@@ -50,6 +53,25 @@ class CircleFit:
         # Calculate the start and end indices
         start_index = max(0, closest_index - num_points)
         end_index = min(len(self.data) - 1, closest_index + num_points)
+
+        # Filter the data
+        filtered_data = self.data.iloc[start_index:end_index + 1]
+        self.freq = filtered_data['freq (Hz)']
+        self.real = filtered_data['real']
+        self.cplx = filtered_data['complex']
+        self.frequencies = self.freq.values
+        self.omegas = self.frequencies * 2 * np.pi
+        self.freq_min = min(self.freq)
+        self.freq_max = max(self.freq)
+
+    def filter_data_range(self):
+        ''' Filters data input to the inputted frequency range '''
+
+        # Find the index of the closest frequency to self.freq_est
+        closest_index = np.abs(self.data['freq (Hz)'] - self.freq_est).idxmin()
+        # Calculate the start and end indices
+        start_index = np.abs(self.data['freq (Hz)'] - self.freq_min).idxmin()
+        end_index = np.abs(self.data['freq (Hz)'] - self.freq_max).idxmin()
 
         # Filter the data
         filtered_data = self.data.iloc[start_index:end_index + 1]
@@ -144,6 +166,9 @@ class CircleFit:
         lower_angles = self.angles[self.frequencies < split]
         higher_angles = self.angles[self.frequencies >= split]
 
+        print("lower frequencies: " + str(lower_frequencies))
+        print("higher frequencies: " + str(higher_frequencies))
+
         # Initialize array for damping coefficients
         damping_coeffs = []
         theta = self.theta
@@ -201,14 +226,20 @@ class CircleFit:
 
     def choose_points(self):
         '''Allows the user to test out numbers of points to see how they look'''
-        print('Performing circle fit at ' + str(self.freq_est) + ' Hz')
+        print('Performing circle fit at ' + str(self.freq_est) + ' Hz. Frequency range: ' + str(self.freq_min) + '-' + str(self.freq_max))
         while True:
-            self.points = int(input("Enter the number of points: "))
-            self.run()
+            self.fit_circle()
+            self.calculate_resonant_frequency()
             self.plot_circle()
             accept = str(input("Do you accept this fit? [y/n]"))
             if accept == 'y':
                 break
+            self.points = int(input("Enter the number of points: "))
+            self.filter_data(self.points)
+
+        self.calculate_damping()
+        self.calculate_modal_parameters()
+
         self.summarize_results()
         self.plot_comparison()
 
@@ -262,7 +293,7 @@ class CircleFit:
         plt.subplot(2, 1, 1)
         plt.plot(freq_sim, alpha_real, label='Simulated Real Part')
         plt.scatter(freq, real, color='red', label='Experimental Real Part')
-        plt.xlabel('Frequency (ω)')
+        plt.xlabel('Frequency')
         plt.ylabel('Real Part')
         plt.title('Real Part of Frequency Response')
         plt.legend()
@@ -272,7 +303,7 @@ class CircleFit:
         plt.subplot(2,1,2)
         plt.plot(freq_sim, alpha_imag, label='Simulated Imaginary Part')
         plt.scatter(freq, cplx, color='red', label='Experimental Imaginary Part')
-        plt.xlabel('Frequency (ω)')
+        plt.xlabel('Frequency')
         plt.ylabel('Imaginary Part')
         plt.title('Imaginary Part of Frequency Response')
         plt.legend()

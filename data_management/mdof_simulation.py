@@ -5,9 +5,12 @@ import plotting
 import pandas as pd
 
 # System parameters
-m = np.array([0.1, 0.1, 0.1])  # Masses of each degree of freedom
-k = np.array([30000, 20000, 30000])  # Spring constants
-c = np.array([1, 1, 1])  # Damping coefficients
+# m = np.array([0.1, 0.1, 0.1])  # Masses of each degree of freedom
+# k = np.array([30000, 20000, 30000])  # Spring constants
+# c = np.array([1, 1, 1])  # Damping coefficients
+m = [1]
+k = [10000]
+c = [0.5]
 DOF = len(m)
 
 # Mass matrix
@@ -33,8 +36,9 @@ v0[0] = 1.0
 # Time parameters
 t_start = 0.0
 t_end = 10.0
-dt = 0.001
+dt = 0.0001
 timesteps = int((t_end - t_start) / dt) + 1
+print(timesteps)
 
 # Initialize arrays to store results
 u = np.zeros((DOF, timesteps))
@@ -45,15 +49,22 @@ t = np.linspace(t_start, t_end, timesteps)
 # Initial conditions
 u[:, 0] = u0
 v[:, 0] = v0
+# Calculate initial acceleration
+a[:, 0] = np.linalg.solve(M, -C @ v[:, 0] - K @ u[:, 0])
 
 # Simulation loop
 for i in range(1, timesteps):
     # Calculate acceleration
     a[:, i - 1] = np.linalg.solve(M, -C @ v[:, i - 1] - K @ u[:, i - 1])
-
     # Update velocity and displacement using Euler's method
     v[:, i] = v[:, i - 1] + a[:, i - 1] * dt
     u[:, i] = u[:, i - 1] + v[:, i] * dt
+
+# # Simulation loop using Verlet integration method
+# for i in range(1, timesteps):
+#     u[:, i] = u[:, i-1] + v[:, i-1] * dt + 0.5 * a[:, i-1] * dt**2
+#     a[:, i] = np.linalg.solve(M, -C @ v[:, i-1] - K @ u[:, i])
+#     v[:, i] = v[:, i-1] + 0.5 * (a[:, i-1] + a[:, i]) * dt
 
 
 plt.figure(figsize=(10, 4))
