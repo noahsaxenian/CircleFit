@@ -1,7 +1,9 @@
 import numpy as np
 from scipy.optimize import least_squares
 from scipy.interpolate import UnivariateSpline
+from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
+from scipy.optimize import minimize
 
 class CircleFit:
     '''Circle fitting class for a single mode
@@ -20,6 +22,7 @@ class CircleFit:
         self.k = None
         self.r = None
         self.frequencies = None
+        self.omegas = None
         self.angles = None
         self.resonant_frequency = None
         self.omega = None
@@ -54,19 +57,20 @@ class CircleFit:
         self.real = filtered_data['real']
         self.cplx = filtered_data['complex']
         self.frequencies = self.freq.values
+        self.omegas = self.frequencies * 2 * np.pi
         self.freq_min = min(self.freq)
         self.freq_max = max(self.freq)
 
-    @staticmethod
-    def residuals(params, x, y):
-        # Used for circle fitting
-        h, k, r = params
-        return (x - h) ** 2 + (y - k) ** 2 - r ** 2
 
     def fit_circle(self):
         ''' Function to fit circle
         Kasa method gets initial guess
         Least squares for final fit '''
+
+        def residuals(params, x, y):
+            # Used for circle fitting
+            h, k, r = params
+            return (x - h) ** 2 + (y - k) ** 2 - r ** 2
 
         x = self.real
         y = self.cplx
@@ -81,8 +85,35 @@ class CircleFit:
         initial_guess = [h_kasa, k_kasa, r_kasa]
 
         # Perform least squares fitting
-        result = least_squares(self.residuals, initial_guess, args=(x, y))
+        result = least_squares(residuals, initial_guess, args=(x, y))
         self.h, self.k, self.r = result.x
+
+    def calculate_resonant_frequency_quadratic(self):
+        ''' doesn't work yet '''
+        raw_angles = np.arctan2(self.cplx - self.k, self.real - self.h) % (2 * np.pi)
+        self.angles = np.unwrap(raw_angles)
+        omegas_2 = self.omegas ** 2
+
+        domega2_dtheta = np.gradient(omegas_2, self.angles)
+
+        coefficients = np.polyfit(omegas_2, domega2_dtheta,2)
+        # Get the polynomial function from the coefficients
+        quadratic_fit = np.poly1d(coefficients)
+        # Evaluate the polynomial at the desired points
+        omegas_2_dense = np.linspace(omegas_2.min(), omegas_2.max(), 1000)
+        deriv_dense = quadratic_fit(omegas_2_dense)
+
+        max_index = np.argmax(deriv_dense)
+        self.omega = np.sqrt(omegas_2_dense[max_index])
+        self.resonant_frequency = self.omega / (np.pi * 2)
+
+        # Plot the original data and the fitted curve
+        plt.plot(omegas_2, domega2_dtheta, 'o', color='green', label='data')
+        plt.plot(omegas_2_dense, deriv_dense, color='blue', label='quadratic fit')
+        plt.xlabel('Frequency (ω^2)')
+        plt.ylabel('dω^2/dtheta')
+        plt.legend()
+        plt.show()
 
     def calculate_resonant_frequency(self):
         ''' Evaluates angles from center of circle to each point
@@ -98,6 +129,8 @@ class CircleFit:
         self.resonant_frequency = round(frequencies_dense[resonant_frequency_index], 1)
         self.omega = self.resonant_frequency * 2 * np.pi
         self.theta = spline(self.resonant_frequency)
+
+        #self.plot_angles()
 
     def calculate_damping(self):
         '''Function to calculate damping
@@ -140,7 +173,9 @@ class CircleFit:
 
         B_x = self.h + self.r * np.cos(self.theta + np.pi)
         B_y = self.k + self.r * np.sin(self.theta + np.pi)
-        self.B = np.sqrt(B_x ** 2 + B_y ** 2)
+        B_mag = np.sqrt(B_x ** 2 + B_y ** 2)
+        B_phase = np.atan2(B_y, B_x)
+        self.B = B_mag + 1j * B_phase
         return self.A, self.phase
 
 
@@ -217,7 +252,7 @@ class CircleFit:
         omega = freq_sim * 2 * np.pi
         w_r = self.resonant_frequency * 2 * np.pi
         # Compute complex response function
-        alpha = self.A / (w_r ** 2 - omega ** 2 + 1j * self.damping * w_r ** 2) + self.B
+        alpha = self.A / (w_r ** 2 - omega ** 2 + 1j * self.damping * w_r ** 2) #+ self.B
         # Separate real and imaginary parts
         alpha_real = np.real(alpha)
         alpha_imag = np.imag(alpha)

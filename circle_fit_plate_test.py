@@ -13,7 +13,7 @@ siemens_fit = pd.read_csv(file_path, delimiter='\t')
 
 #identified peaks
 freqs = [229, 287, 533, 671, 893, 1068, 1131, 1305, 1457, 1717, 1857]
-points = [10, 5, 5, 5, 5, 5, 5, 8, 5, 5, 3]
+points = [5, 3, 2, 5, 3, 5, 4, 3, 4, 4, 4]
 
 freq_range = [200, 2000]
 
@@ -22,11 +22,6 @@ siemens_fit = siemens_fit[(siemens_fit['freq (Hz)'] >= freq_range[0]) & (siemens
 #print(filtered_data)
 
 modes = []
-'''for freq in freqs:
-    print('\nPerforming circle fit at ' + str(freq) + ' Hz')
-    mode = CircleFit(data, freq)
-    mode.choose_points()
-    modes.append(mode)'''
 
 for i in range(len(freqs)):
     mode = CircleFit(data, freqs[i], points[i])
