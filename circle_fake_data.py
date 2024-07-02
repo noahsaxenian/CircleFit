@@ -19,7 +19,7 @@ freq_range = [0, 1000]
 
 filtered_data = data[(data['freq (Hz)'] >= freq_range[0]) & (data['freq (Hz)'] <= freq_range[1])]
 
-peaks, peak_ranges = peak_ranges(filtered_data, prominence = 0.0001)W
+peaks, peak_ranges = peak_ranges(filtered_data, prominence = 0.0001)
 
 
 modes = []
