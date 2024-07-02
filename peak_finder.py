@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.signal import find_peaks
 
-def peak_ranges(data, prom = 0.001, plot=True):
+def peak_ranges(data, distance = 1, prominence = 0.001, plot=True):
     freqs = data['freq (Hz)'].values
     real = data['real'].values
     imag = data['complex'].values
@@ -11,7 +11,7 @@ def peak_ranges(data, prom = 0.001, plot=True):
     phase = np.arctan2(imag, real)
 
     # Detect peaks
-    peak_indices, properties = find_peaks(mag, height=0, distance=1, prominence=prom)
+    peak_indices, properties = find_peaks(mag, height=0, distance=distance, prominence=prominence)
 
     #print(peak_indices)
     peak_freqs = freqs[peak_indices]

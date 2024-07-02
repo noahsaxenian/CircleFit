@@ -2,6 +2,9 @@ import numpy as np
 from scipy.optimize import least_squares
 from scipy.interpolate import UnivariateSpline
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+import time
+mpl.use('TkAgg')
 
 class CircleFit:
     '''Circle fitting class for a single mode
@@ -13,12 +16,10 @@ class CircleFit:
         self.points = points
         self.freq_min = None
         self.freq_max = None
-        if freq_range:
-            self.freq_min = freq_range[0]
-            self.freq_max = freq_range[1]
         self.freq = None
         self.real = None
         self.cplx = None
+        self.magnitudes = None
         self.h = None
         self.k = None
         self.r = None
@@ -33,16 +34,35 @@ class CircleFit:
         self.A = None
         self.phase = None
         self.B = 0
+        self.interactive_plot = None
 
-        self.filter_data_range()
+        self.wide_freq = None
+        self.wide_magnitudes = None
+
 
     def run(self):
         # Runs through necessary functions to find all parameters
-        self.filter_data(self.points)
+        if self.freq_min is None:
+            self.filter_data(self.points)
+        else:
+            self.filter_data_range(self.freq_min, self.freq_max)
         self.fit_circle()
         self.calculate_resonant_frequency()
         self.calculate_damping()
         self.calculate_modal_parameters()
+
+    def get_results(self):
+        return {
+            'freq': self.freq,
+            'real': self.real,
+            'cplx': self.cplx,
+            'h': self.h,
+            'k': self.k,
+            'r': self.r,
+            'resonant_frequency': self.resonant_frequency,
+            'damping': self.damping,
+            'Modal Constant': self.A
+        }
 
     def filter_data(self, num_points):
         ''' Filters data input to the inputted number of points
@@ -63,12 +83,23 @@ class CircleFit:
         self.omegas = self.frequencies * 2 * np.pi
         self.freq_min = min(self.freq)
         self.freq_max = max(self.freq)
+        self.magnitudes = np.sqrt(self.real ** 2 + self.cplx ** 2)
 
-    def filter_data_range(self):
+        # get wide filter
+        start_index = np.abs(self.data['freq (Hz)'] - (self.freq_min - 10)).idxmin()
+        end_index = np.abs(self.data['freq (Hz)'] - (self.freq_max + 10)).idxmin()
+        wide_filtered_data = self.data.iloc[start_index:end_index + 1]
+        self.wide_freq = wide_filtered_data['freq (Hz)'].values
+        wide_real = wide_filtered_data['real'].values
+        wide_cplx = wide_filtered_data['complex'].values
+        self.wide_magnitudes = np.sqrt(wide_real ** 2 + wide_cplx ** 2)
+
+    def filter_data_range(self, freq_min, freq_max):
         ''' Filters data input to the inputted frequency range '''
 
-        # Find the index of the closest frequency to self.freq_est
-        closest_index = np.abs(self.data['freq (Hz)'] - self.freq_est).idxmin()
+        self.freq_min = freq_min
+        self.freq_max = freq_max
+
         # Calculate the start and end indices
         start_index = np.abs(self.data['freq (Hz)'] - self.freq_min).idxmin()
         end_index = np.abs(self.data['freq (Hz)'] - self.freq_max).idxmin()
@@ -82,6 +113,16 @@ class CircleFit:
         self.omegas = self.frequencies * 2 * np.pi
         self.freq_min = min(self.freq)
         self.freq_max = max(self.freq)
+        self.magnitudes = np.sqrt(self.real**2 + self.cplx**2)
+
+        # get wide filter
+        start_index = np.abs(self.data['freq (Hz)'] - (self.freq_min - 10)).idxmin()
+        end_index = np.abs(self.data['freq (Hz)'] - (self.freq_max + 10)).idxmin()
+        wide_filtered_data = self.data.iloc[start_index:end_index + 1]
+        self.wide_freq = wide_filtered_data['freq (Hz)'].values
+        wide_real = wide_filtered_data['real'].values
+        wide_cplx = wide_filtered_data['complex'].values
+        self.wide_magnitudes = np.sqrt(wide_real ** 2 + wide_cplx ** 2)
 
 
     def fit_circle(self):
@@ -110,32 +151,6 @@ class CircleFit:
         result = least_squares(residuals, initial_guess, args=(x, y))
         self.h, self.k, self.r = result.x
 
-    def calculate_resonant_frequency_quadratic(self):
-        ''' doesn't work yet '''
-        raw_angles = np.arctan2(self.cplx - self.k, self.real - self.h) % (2 * np.pi)
-        self.angles = np.unwrap(raw_angles)
-        omegas_2 = self.omegas ** 2
-
-        domega2_dtheta = np.gradient(omegas_2, self.angles)
-
-        coefficients = np.polyfit(omegas_2, domega2_dtheta,2)
-        # Get the polynomial function from the coefficients
-        quadratic_fit = np.poly1d(coefficients)
-        # Evaluate the polynomial at the desired points
-        omegas_2_dense = np.linspace(omegas_2.min(), omegas_2.max(), 1000)
-        deriv_dense = quadratic_fit(omegas_2_dense)
-
-        max_index = np.argmax(deriv_dense)
-        self.omega = np.sqrt(omegas_2_dense[max_index])
-        self.resonant_frequency = self.omega / (np.pi * 2)
-
-        # Plot the original data and the fitted curve
-        plt.plot(omegas_2, domega2_dtheta, 'o', color='green', label='data')
-        plt.plot(omegas_2_dense, deriv_dense, color='blue', label='quadratic fit')
-        plt.xlabel('Frequency (ω^2)')
-        plt.ylabel('dω^2/dtheta')
-        plt.legend()
-        plt.show()
 
     def calculate_resonant_frequency(self):
         ''' Evaluates angles from center of circle to each point
@@ -165,9 +180,6 @@ class CircleFit:
         higher_frequencies = self.frequencies[self.frequencies >= split]
         lower_angles = self.angles[self.frequencies < split]
         higher_angles = self.angles[self.frequencies >= split]
-
-        print("lower frequencies: " + str(lower_frequencies))
-        print("higher frequencies: " + str(higher_frequencies))
 
         # Initialize array for damping coefficients
         damping_coeffs = []
@@ -206,14 +218,34 @@ class CircleFit:
 
     def plot_circle(self):
         '''Create a nice plot of the fitted circle'''
+        start_index = np.abs(self.data['freq (Hz)'] - (self.freq_min - 10)).idxmin()
+        end_index = np.abs(self.data['freq (Hz)'] - (self.freq_max + 10)).idxmin()
+        filtered_data = self.data.iloc[start_index:end_index + 1]
+        freq = filtered_data['freq (Hz)'].values
+        real = filtered_data['real'].values
+        cplx = filtered_data['complex'].values
+        magnitudes = np.sqrt(real ** 2 + cplx ** 2)
+        max_mag = np.max(magnitudes)
+
         points = np.linspace(0, 2 * np.pi, 100)
         x_fit = self.h + self.r * np.cos(points)
         y_fit = self.k + self.r * np.sin(points)
         x_pos = self.h + self.r * np.cos(self.theta)
         y_pos = self.k + self.r * np.sin(self.theta)
-        plt.figure(figsize=(6, 6))
+
+        plt.figure(figsize=(12, 6))
+        plt.subplot(1,2,1)
+        plt.plot(freq, magnitudes)
+        plt.axvline(x=self.freq_min, color='r', linestyle='--', linewidth=1)
+        plt.axvline(x=self.freq_max, color='r', linestyle='--', linewidth=1)
+        plt.plot(self.resonant_frequency, max_mag, 'x', color='g')
+        plt.xlabel('Frequency')
+        plt.ylabel('Magnitude')
+
+        plt.subplot(1,2,2)
         plt.plot(self.real, self.cplx, 'o', label='Data')
-        plt.plot(x_pos, y_pos, 'o', label='Estimate', color='green')
+        label_string = 'Estimate = ' + str(self.resonant_frequency) + ' Hz'
+        plt.plot(x_pos, y_pos, 'o', label=label_string, color='green')
         plt.plot(x_fit, y_fit, label='Fitted Circle', color='red')
         plt.xlabel('Real')
         plt.ylabel('Complex')
@@ -224,13 +256,161 @@ class CircleFit:
         plt.title('Circle Fit to Mode Data')
         plt.show()
 
+    def create_plot_interactive(self):
+        start_index = np.abs(self.data['freq (Hz)'] - (self.freq_min - 10)).idxmin()
+        end_index = np.abs(self.data['freq (Hz)'] - (self.freq_max + 10)).idxmin()
+        filtered_data = self.data.iloc[start_index:end_index + 1]
+        freq = filtered_data['freq (Hz)'].values
+        real = filtered_data['real'].values
+        cplx = filtered_data['complex'].values
+        magnitudes = np.sqrt(real ** 2 + cplx ** 2)
+        max_mag = np.max(magnitudes)
+
+        points = np.linspace(0, 2 * np.pi, 100)
+        x_fit = self.h + self.r * np.cos(points)
+        y_fit = self.k + self.r * np.sin(points)
+        x_pos = self.h + self.r * np.cos(self.theta)
+        y_pos = self.k + self.r * np.sin(self.theta)
+
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+
+        # First subplot
+        ax1.plot(freq, magnitudes)
+        #plot2, = ax1.axvline(x=self.freq_min, color='r', linestyle='--', linewidth=1)
+        #plot3, = ax1.axvline(x=self.freq_max, color='r', linestyle='--', linewidth=1)
+        ax1.plot([self.freq_min, self.freq_min], [0, max_mag], color='r', linestyle='--')
+        ax1.plot([self.freq_max, self.freq_max], [0, max_mag], color='r', linestyle='--')
+        ax1.plot(self.resonant_frequency, max_mag, 'x', color='g')
+        ax1.set_xlabel('Frequency')
+        ax1.set_ylabel('Magnitude')
+
+        # Second subplot
+        ax2.scatter(real, cplx, label='Data')
+        label_string = f'Estimate = {self.resonant_frequency} Hz'
+        ax2.plot(x_pos, y_pos, 'o', label=label_string, color='green')
+        ax2.plot(x_fit, y_fit, label='Fitted Circle', color='red')
+        ax2.plot([x_pos, self.h], [y_pos, self.k], 'k--', alpha=0.5)
+        ax2.set_xlabel('Real')
+        ax2.set_ylabel('Complex')
+        ax2.legend()
+        ax2.grid(True)
+        ax2.axis('equal')
+        ax2.set_title('Circle Fit to Mode Data')
+
+        ax1.relim()  # Recalculate limits
+        ax1.autoscale_view()  # Autoscale the view to fit the data
+        ax2.relim()
+        ax2.autoscale_view()
+        fig.canvas.draw()
+        fig.canvas.flush_events()
+
+        return fig, ax1, ax2
+
+    def update_plot(self, fig, ax1, ax2):
+        start_index = np.abs(self.data['freq (Hz)'] - (self.freq_min - 10)).idxmin()
+        end_index = np.abs(self.data['freq (Hz)'] - (self.freq_max + 10)).idxmin()
+        filtered_data = self.data.iloc[start_index:end_index + 1]
+        freq = filtered_data['freq (Hz)'].values
+        real = filtered_data['real'].values
+        cplx = filtered_data['complex'].values
+        magnitudes = np.sqrt(real ** 2 + cplx ** 2)
+        max_mag = np.max(magnitudes)
+
+        points = np.linspace(0, 2 * np.pi, 100)
+        x_fit = self.h + self.r * np.cos(points)
+        y_fit = self.k + self.r * np.sin(points)
+        x_pos = self.h + self.r * np.cos(self.theta)
+        y_pos = self.k + self.r * np.sin(self.theta)
+
+        ax1.lines[0].set_data(freq, magnitudes)
+        ax1.lines[1].set_xdata([self.freq_min, self.freq_min])  # Update the vertical line for freq_min
+        ax1.lines[2].set_xdata([self.freq_max, self.freq_max])  # Update the vertical line for freq_max
+        ax1.lines[3].set_data([self.resonant_frequency], [max_mag])
+
+        ax2.collections[0].set_offsets(np.c_[real, cplx])
+        ax2.lines[0].set_data([x_pos], [y_pos])
+        ax2.lines[1].set_data([x_fit], [y_fit])
+        ax2.lines[2].set_data([x_pos, self.h], [y_pos, self.k])
+
+        ax1.relim()  # Recalculate limits
+        ax1.autoscale_view()  # Autoscale the view to fit the data
+        ax2.relim()
+        ax2.autoscale_view()
+        plt.draw()
+        plt.pause(0.001)
+
+
+    def update_circle(self):
+        self.fit_circle()
+        self.calculate_resonant_frequency()
+
+
+    def choose_points_interactive(self):
+
+        interactive_fit = InteractiveCircleFit(self.data, freq_est=self.resonant_frequency, initial_points=10,
+                                               freq_range=[self.freq_min, self.freq_max])
+        interactive_fit.show()
+
+
+
+
+        # print('Performing circle fit at ' + str(self.freq_est) + ' Hz. Frequency range: ' + str(
+        #     self.freq_min) + '-' + str(self.freq_max))
+        # plt.ion()
+        # fig, ax1, ax2 = self.create_plot_interactive()
+        #
+        # for i in range(10):
+        #     self.points += 1
+        #     self.filter_data(self.points)
+        #     self.fit_circle()
+        #     self.calculate_resonant_frequency()
+        #     self.update_plot(fig, ax1, ax2)
+        #     time.sleep(1)
+        # plt.show()
+        # plt.ioff()
+
+        ###################
+
+        # while True:
+        #     accept = str(input("Do you accept this fit? [y/n]"))
+        #     if accept == 'y':
+        #         plt.ioff()
+        #         break
+        #     self.points = int(input("Enter the number of points: "))
+        #     self.filter_data(self.points)
+        #     self.fit_circle()
+        #     self.calculate_resonant_frequency()
+        #     self.update_plot(fig, ax1, ax2)
+
+        # self.calculate_damping()
+        # self.calculate_modal_parameters()
+        #
+        # self.summarize_results()
+
+
+    # def update_data(self, val):
+    #
+    #     return
+    #
+    # def choose_points_interactive(self):
+    #     self.fit_circle()
+    #     self.calculate_resonant_frequency()
+    #     print('Performing circle fit at ' + str(self.freq_est) + ' Hz. Frequency range: ' + str(
+    #         self.freq_min) + '-' + str(self.freq_max))
+    #     self.interactive_plot = InteractivePlot(self.update_data())
+    #     self.interactive_plot.slider.on_changed(self.update_data)
+
+
     def choose_points(self):
         '''Allows the user to test out numbers of points to see how they look'''
         print('Performing circle fit at ' + str(self.freq_est) + ' Hz. Frequency range: ' + str(self.freq_min) + '-' + str(self.freq_max))
         while True:
             self.fit_circle()
             self.calculate_resonant_frequency()
-            self.plot_circle()
+
+            plt.ion()
+            fig, ax1, ax2 = self.create_plot_interactive()
+            plt.show()
             accept = str(input("Do you accept this fit? [y/n]"))
             if accept == 'y':
                 break
@@ -252,7 +432,8 @@ class CircleFit:
         plt.figure(figsize=(6, 6))
         plt.plot(self.frequencies, self.angles, 'o', label='Angles', color='b')
         plt.plot(frequencies_dense, angles_dense, label='Spline Fit', color='r')
-        plt.plot(self.resonant_frequency, self.theta, 'o', label='Estimate', color='g')
+        label_string = 'Estimate = ' + str(self.resonant_frequency) + ' Hz'
+        plt.plot(self.resonant_frequency, self.theta, 'o', label=label_string, color='g')
         plt.xlabel('Frequency')
         plt.ylabel('Angle')
         plt.title('Angle vs Frequency')
@@ -310,4 +491,22 @@ class CircleFit:
         plt.grid(True)
         plt.show()
 
+    def plot_range(self):
+        start_index = np.abs(self.data['freq (Hz)'] - (self.freq_min-10)).idxmin()
+        end_index = np.abs(self.data['freq (Hz)'] - (self.freq_max+10)).idxmin()
+        filtered_data = self.data.iloc[start_index:end_index + 1]
+        freq = filtered_data['freq (Hz)'].values
+        real = filtered_data['real'].values
+        cplx = filtered_data['complex'].values
+        magnitudes = np.sqrt(real**2 + cplx**2)
+        max_mag = np.max(magnitudes)
+
+        plt.figure()
+        plt.plot(freq, magnitudes)
+        plt.axvline(x=self.freq_min, color='r', linestyle='--', linewidth=1)
+        plt.axvline(x=self.freq_max, color='r', linestyle='--', linewidth=1)
+        plt.plot(self.resonant_frequency, max_mag, 'x', color='g')
+        plt.xlabel('Frequency')
+        plt.ylabel('Magnitude')
+        plt.show()
 

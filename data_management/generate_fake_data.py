@@ -3,15 +3,12 @@ import numpy as np
 
 import plotting
 
-frequencies = np.linspace(0, 5000, 5000)
+frequencies = np.linspace(0, 1000, 1000)
 omega = frequencies * 2 * np.pi
 alpha = np.zeros(len(frequencies)) + 0j
 
 # enter [freq, A  , n    ]
-modes = [[500, 200 + 20j, 0.02],
-         [600, 500 - 50j, 0.035],
-         [3000, 10000 - 100j, 0.5]
-         ]
+modes = [[500, 200 + 20j, 0.02]]
 
 for mode in modes:
     w_r = mode[0] * 2 * np.pi
