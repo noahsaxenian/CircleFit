@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import peak_finder
 from interactive_circle_fit import InteractiveCircleFit
+from interactive_peak_finder import InteractivePeakFinder
 
 # Load your FRF data from a CSV file
 file_path = 'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point1_data_receptance.tsv'
@@ -13,24 +14,28 @@ data = pd.read_csv(file_path, delimiter='\t')
 regenerated_file_path = 'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point6_regenerated_receptance.tsv'
 siemens_fit = pd.read_csv(file_path, delimiter='\t')
 
-freq_range = [200, 2000]
-
+# Filter data to desired frequency range
+freq_range = [200, 400]
 filtered_data = data[(data['freq (Hz)'] >= freq_range[0]) & (data['freq (Hz)'] <= freq_range[1])]
 siemens_fit = siemens_fit[(siemens_fit['freq (Hz)'] >= freq_range[0]) & (siemens_fit['freq (Hz)'] <= freq_range[1])]
 
-peaks, peak_ranges = peak_finder.peak_ranges(filtered_data, distance=10, prominence=1)
+# Find peaks and ranges
+#peaks, peak_ranges = peak_finder.peak_ranges(filtered_data, distance=10, prominence=10)
+p = InteractivePeakFinder(filtered_data)
+peaks = p.peaks
+peak_ranges = p.ranges
 
-modes = []
 
-for i in range(len(peaks)):
-    mode = CircleFit(data, peaks[i], freq_range=peak_ranges[i])
+# Create array of circle fits for each peak
+modes = [CircleFit(data, peak, freq_range=freq_range) for peak, freq_range in zip(peaks, peak_ranges)]
+for mode in modes:
     mode.run()
-    modes.append(mode)
 
+# Interactive plot to help choose best range of points for each peak
 interactive_fit = InteractiveCircleFit(modes)
 
-
-frequencies = np.linspace(freq_range[0], freq_range[1], freq_range[1]-freq_range[0])
+# Generate simulated plot
+frequencies = np.linspace(freq_range[0], freq_range[1], (freq_range[1]-freq_range[0])*10)
 omega = frequencies * 2 * np.pi
 alpha = np.zeros(len(frequencies)) + 0j
 
