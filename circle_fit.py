@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.optimize import least_squares
-from scipy.interpolate import UnivariateSpline
+from scipy.interpolate import UnivariateSpline, interp1d
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import time
@@ -35,47 +35,41 @@ class CircleFit:
         self.phase = None
         self.B = 0
         self.interactive_plot = None
-        if freq_range:
-            self.freq_min = freq_range[0]
-            self.freq_max = freq_range[1]
-
         self.wide_freq = None
         self.wide_magnitudes = None
+
+        if freq_range:
+            self.filter_data(freq_range=freq_range)
+        else:
+            self.filter_data(num_points=self.points)
 
 
     def run(self):
         # Runs through necessary functions to find all parameters
-        if self.freq_min is None:
-            self.filter_data(self.points)
-        else:
-            self.filter_data_range(self.freq_min, self.freq_max)
         self.fit_circle()
         self.calculate_resonant_frequency()
         self.calculate_damping()
         self.calculate_modal_parameters()
 
-    def get_results(self):
-        return {
-            'freq': self.freq,
-            'real': self.real,
-            'cplx': self.cplx,
-            'h': self.h,
-            'k': self.k,
-            'r': self.r,
-            'resonant_frequency': self.resonant_frequency,
-            'damping': self.damping,
-            'Modal Constant': self.A
-        }
 
-    def filter_data(self, num_points):
+    def filter_data(self, num_points=10, freq_range=None):
         ''' Filters data input to the inputted number of points
         surrounding frequency estimate '''
 
-        # Find the index of the closest frequency to self.freq_est
-        closest_index = np.abs(self.data['freq (Hz)'] - self.freq_est).idxmin()
-        # Calculate the start and end indices
-        start_index = max(0, closest_index - num_points)
-        end_index = min(len(self.data) - 1, closest_index + num_points)
+        if freq_range:
+            self.freq_min = freq_range[0]
+            self.freq_max = freq_range[1]
+
+            # Calculate the start and end indices
+            start_index = np.abs(self.data['freq (Hz)'] - self.freq_min).idxmin()
+            end_index = np.abs(self.data['freq (Hz)'] - self.freq_max).idxmin()
+
+        else:
+            # Find the index of the closest frequency to self.freq_est
+            closest_index = np.abs(self.data['freq (Hz)'] - self.freq_est).idxmin()
+            # Calculate the start and end indices
+            start_index = max(0, closest_index - num_points)
+            end_index = min(len(self.data) - 1, closest_index + num_points)
 
         # Filter the data
         filtered_data = self.data.iloc[start_index:end_index + 1]
@@ -161,16 +155,25 @@ class CircleFit:
         Take derivative, location of max rate of angle change is natural frequency '''
         raw_angles = np.arctan2(self.cplx - self.k, self.real - self.h) % (2 * np.pi)
         self.angles = np.unwrap(raw_angles)
-        spline = UnivariateSpline(self.frequencies, self.angles, s=0)
-        frequencies_dense = np.linspace(self.freq_min, self.freq_max, 1000)
-        angles_dense = spline(frequencies_dense)
-        dtheta_df = np.gradient(angles_dense, frequencies_dense)
-        resonant_frequency_index = np.argmin(dtheta_df)
-        self.resonant_frequency = round(frequencies_dense[resonant_frequency_index], 1)
-        self.omega = self.resonant_frequency * 2 * np.pi
-        self.theta = spline(self.resonant_frequency)
 
-        #self.plot_angles()
+        try:
+            # Attempt to fit the UnivariateSpline
+            spline = UnivariateSpline(self.frequencies, self.angles, s=0)
+            frequencies_dense = np.linspace(self.freq_min, self.freq_max, 1000)
+            angles_dense = spline(frequencies_dense)
+            dtheta_df = np.gradient(angles_dense, frequencies_dense)
+            resonant_frequency_index = np.argmin(dtheta_df)
+            self.resonant_frequency = round(frequencies_dense[resonant_frequency_index], 1)
+            self.theta = spline(self.resonant_frequency)
+        except Exception as e:
+            print(f"Spline fitting failed: {e}")
+            print("Using closest point")
+            self.resonant_frequency = self.frequencies[np.argmax(self.magnitudes)]
+            print(self.resonant_frequency)
+            self.theta = self.angles[np.argmax(self.magnitudes)]
+
+        self.omega = self.resonant_frequency * 2 * np.pi
+
 
     def calculate_damping(self):
         '''Function to calculate damping
@@ -348,62 +351,6 @@ class CircleFit:
         self.calculate_resonant_frequency()
 
 
-    def choose_points_interactive(self):
-
-        interactive_fit = InteractiveCircleFit(self.data, freq_est=self.resonant_frequency, initial_points=10,
-                                               freq_range=[self.freq_min, self.freq_max])
-        interactive_fit.show()
-
-
-
-
-        # print('Performing circle fit at ' + str(self.freq_est) + ' Hz. Frequency range: ' + str(
-        #     self.freq_min) + '-' + str(self.freq_max))
-        # plt.ion()
-        # fig, ax1, ax2 = self.create_plot_interactive()
-        #
-        # for i in range(10):
-        #     self.points += 1
-        #     self.filter_data(self.points)
-        #     self.fit_circle()
-        #     self.calculate_resonant_frequency()
-        #     self.update_plot(fig, ax1, ax2)
-        #     time.sleep(1)
-        # plt.show()
-        # plt.ioff()
-
-        ###################
-
-        # while True:
-        #     accept = str(input("Do you accept this fit? [y/n]"))
-        #     if accept == 'y':
-        #         plt.ioff()
-        #         break
-        #     self.points = int(input("Enter the number of points: "))
-        #     self.filter_data(self.points)
-        #     self.fit_circle()
-        #     self.calculate_resonant_frequency()
-        #     self.update_plot(fig, ax1, ax2)
-
-        # self.calculate_damping()
-        # self.calculate_modal_parameters()
-        #
-        # self.summarize_results()
-
-
-    # def update_data(self, val):
-    #
-    #     return
-    #
-    # def choose_points_interactive(self):
-    #     self.fit_circle()
-    #     self.calculate_resonant_frequency()
-    #     print('Performing circle fit at ' + str(self.freq_est) + ' Hz. Frequency range: ' + str(
-    #         self.freq_min) + '-' + str(self.freq_max))
-    #     self.interactive_plot = InteractivePlot(self.update_data())
-    #     self.interactive_plot.slider.on_changed(self.update_data)
-
-
     def choose_points(self):
         '''Allows the user to test out numbers of points to see how they look'''
         print('Performing circle fit at ' + str(self.freq_est) + ' Hz. Frequency range: ' + str(self.freq_min) + '-' + str(self.freq_max))
@@ -427,10 +374,10 @@ class CircleFit:
         self.plot_comparison()
 
 
-    def plot_angles(self):
-        spline = UnivariateSpline(self.frequencies, self.angles, s=0)
+    def plot_angles(self, curve):
+        curve_fit = curve
         frequencies_dense = np.linspace(self.freq_min, self.freq_max, 1000)
-        angles_dense = spline(frequencies_dense)
+        angles_dense = curve_fit(frequencies_dense)
 
         plt.figure(figsize=(6, 6))
         plt.plot(self.frequencies, self.angles, 'o', label='Angles', color='b')

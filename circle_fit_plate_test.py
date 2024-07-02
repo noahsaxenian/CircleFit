@@ -7,10 +7,10 @@ import peak_finder
 from interactive_circle_fit import InteractiveCircleFit
 
 # Load your FRF data from a CSV file
-file_path = 'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point5_data_receptance.tsv'
+file_path = 'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point1_data_receptance.tsv'
 data = pd.read_csv(file_path, delimiter='\t')
 
-regenerated_file_path = 'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point5_regenerated_receptance.tsv'
+regenerated_file_path = 'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point6_regenerated_receptance.tsv'
 siemens_fit = pd.read_csv(file_path, delimiter='\t')
 
 freq_range = [200, 2000]
@@ -25,9 +25,9 @@ modes = []
 for i in range(len(peaks)):
     mode = CircleFit(data, peaks[i], freq_range=peak_ranges[i])
     mode.run()
-    interactive_fit = InteractiveCircleFit(mode, f'Mode {i+1}')
-    interactive_fit.show()
     modes.append(mode)
+
+interactive_fit = InteractiveCircleFit(modes)
 
 
 frequencies = np.linspace(freq_range[0], freq_range[1], freq_range[1]-freq_range[0])
