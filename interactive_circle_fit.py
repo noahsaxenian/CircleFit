@@ -5,9 +5,11 @@ from matplotlib.widgets import SpanSelector, Button
 import numpy as np
 
 class InteractiveCircleFit:
-    def __init__(self, circle_fit):
+    def __init__(self, circle_fit, name):
+        self.name = name
         self.circle_fit = circle_fit
-        self.fig, self.axs = plt.subplots(1, 2, figsize=(15, 6))
+        self.fig, self.axs = plt.subplots(1, 2, figsize=(12, 6))
+        self.fig.suptitle(self.name, fontsize=16)
         plt.subplots_adjust(bottom=0.2)
 
         # initialize slider
@@ -60,7 +62,7 @@ class InteractiveCircleFit:
         self.resonant_freq_point, = self.axs[0].plot(resonant_frequency, max(magnitudes), 'x', color='g')
         self.axs[0].set_xlabel('Frequency')
         self.axs[0].set_ylabel('Magnitude')
-        self.axs[0].set_title('Use Cursors to Select Range Around Peak')
+        self.axs[0].set_title('Adjust Range Around Peak')
 
         self.data_scatter = self.axs[1].scatter(real, cplx, label='Data')
         self.circle_plot, = self.axs[1].plot(x_fit, y_fit, label='Fitted Circle', color='red')

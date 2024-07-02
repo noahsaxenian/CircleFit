@@ -4,37 +4,28 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import peak_finder
-from interactive_plot import InteractiveCircleFit
+from interactive_circle_fit import InteractiveCircleFit
 
 # Load your FRF data from a CSV file
-file_path = 'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point1_data_receptance.tsv'
+file_path = 'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point5_data_receptance.tsv'
 data = pd.read_csv(file_path, delimiter='\t')
 
-regenerated_file_path = 'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point1_regenerated_receptance.tsv'
+regenerated_file_path = 'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point5_regenerated_receptance.tsv'
 siemens_fit = pd.read_csv(file_path, delimiter='\t')
-
-#identified peaks
-freqs = [229, 287, 533, 671, 893, 1068, 1131, 1305, 1457, 1717, 1857]
-points = [5, 3, 2, 5, 3, 5, 4, 3, 4, 4, 4]
 
 freq_range = [200, 2000]
 
 filtered_data = data[(data['freq (Hz)'] >= freq_range[0]) & (data['freq (Hz)'] <= freq_range[1])]
 siemens_fit = siemens_fit[(siemens_fit['freq (Hz)'] >= freq_range[0]) & (siemens_fit['freq (Hz)'] <= freq_range[1])]
 
-peaks, peak_ranges = peak_finder.peak_ranges(filtered_data, distance = 10, prominence=0.001)
+peaks, peak_ranges = peak_finder.peak_ranges(filtered_data, distance=10, prominence=1)
 
 modes = []
-
-# for i in range(len(freqs)):
-#     mode = CircleFit(data, peaks[i], freq_range=peak_ranges[i])
-#     mode.choose_points_interactive()
-#     modes.append(mode)
 
 for i in range(len(peaks)):
     mode = CircleFit(data, peaks[i], freq_range=peak_ranges[i])
     mode.run()
-    interactive_fit = InteractiveCircleFit(mode)
+    interactive_fit = InteractiveCircleFit(mode, f'Mode {i+1}')
     interactive_fit.show()
     modes.append(mode)
 
@@ -44,7 +35,6 @@ omega = frequencies * 2 * np.pi
 alpha = np.zeros(len(frequencies)) + 0j
 
 for mode in modes:
-    #print(mode.A, mode.omega, mode.damping)
     alpha += mode.A / (mode.omega ** 2 - omega ** 2 + 1j * mode.damping * mode.omega ** 2)
 
 
@@ -68,7 +58,7 @@ siemens_phase = np.arctan2(siemens_imag, siemens_real)
 
 
 def plot_mag_and_phase():
-    fig = plt.figure(figsize=(20, 12))
+    fig = plt.figure(figsize=(12, 6))
     gs = gridspec.GridSpec(4, 1)
     # Create the first subplot (3/4 of the area)
     ax1 = fig.add_subplot(gs[0:3, 0])
@@ -95,7 +85,7 @@ def plot_mag_and_phase():
     plt.show()
 
 def plot_real_and_imag():
-    fig = plt.figure(figsize=(20, 12))
+    fig = plt.figure(figsize=(10, 10))
     gs = gridspec.GridSpec(4, 1)
     # Create the first subplot (3/4 of the area)
     ax1 = fig.add_subplot(gs[0:2, 0])

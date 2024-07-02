@@ -13,37 +13,39 @@ sheet_name = 'SI FRFs and synthesized'  # Replace with the actual sheet name
 # Read the Excel file from the specified sheet, skip header rows (adjust skiprows as necessary)
 df = pd.read_excel(file_path, sheet_name=sheet_name, skiprows=232)  # Adjust skiprows as needed
 
-# Select the desired columns by their index (adjust column indices as necessary)
-data = df.iloc[:, [3, 4, 5]]  # Adjust indices to select correct columns
 
-# Rename the columns
-data.columns = ['freq (Hz)', 'real', 'complex']
-'''
+for i in range(10):
+    # Select the desired columns by their index (adjust column indices as necessary)
+    data = df.iloc[:, [3, 4, 5]]  # Adjust indices to select correct columns
 
-### Convert mobility to receptance
-# Extract frequency, real, and imaginary parts from the dataframe
-frequencies = data['freq (Hz)'].values
-real_parts = data['real'].values
-imaginary_parts = data['complex'].values
+    # Rename the columns
+    data.columns = ['freq (Hz)', 'real', 'complex']
 
-# Convert frequency to angular frequency (rad/s)
-omega = 2 * np.pi * frequencies
 
-# Combine real and imaginary parts to form complex mobility data
-mobility = real_parts + 1j * imaginary_parts
+    ### Convert mobility to receptance
+    # Extract frequency, real, and imaginary parts from the dataframe
+    frequencies = data['freq (Hz)'].values
+    real_parts = data['real'].values
+    imaginary_parts = data['complex'].values
 
-# Calculate receptance
-receptance = mobility / (1j * omega)
+    # Convert frequency to angular frequency (rad/s)
+    omega = 2 * np.pi * frequencies
 
-# Create a new dataframe to store the results
-result_df = pd.DataFrame({
-    'freq (Hz)': frequencies,
-    'real': receptance.real,
-    'complex': receptance.imag
-})'''
+    # Combine real and imaginary parts to form complex mobility data
+    mobility = real_parts + 1j * imaginary_parts
 
-# Save the receptance data to a new TSV file
-data.to_csv('C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point1_regenerated_receptance.tsv', sep='\t', index=False)
+    # Calculate receptance
+    receptance = mobility / (1j * omega)
 
-# Print the result for verification
-print(data)
+    # Create a new dataframe to store the results
+    result_df = pd.DataFrame({
+        'freq (Hz)': frequencies,
+        'real': receptance.real,
+        'complex': receptance.imag
+    })
+
+    # Save the receptance data to a new TSV file
+    data.to_csv('C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point1_regenerated_receptance.tsv', sep='\t', index=False)
+
+    # Print the result for verification
+    #print(data)

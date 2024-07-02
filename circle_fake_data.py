@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from peak_finder import peak_ranges
-from interactive_plot import InteractiveCircleFit
+from interactive_circle_fit import InteractiveCircleFit
 
 # Load your FRF data from a CSV file
 file_path = 'c:/Users/noahs/Documents/ceeo/modal stuff/Code/data/Plate/Plate 03/csv/fake_data_1.tsv'
@@ -19,7 +19,7 @@ freq_range = [0, 1000]
 
 filtered_data = data[(data['freq (Hz)'] >= freq_range[0]) & (data['freq (Hz)'] <= freq_range[1])]
 
-peaks, peak_ranges = peak_ranges(filtered_data, prominence = 0.0001)
+peaks, peak_ranges = peak_ranges(filtered_data, prominence=0.0001)
 
 
 modes = []
@@ -27,7 +27,7 @@ modes = []
 for i in range(len(peaks)):
     mode = CircleFit(data, peaks[i], freq_range=peak_ranges[i])
     mode.run()
-    interactive_fit = InteractiveCircleFit(mode)
+    interactive_fit = InteractiveCircleFit(mode, f'Mode {i+1}')
     interactive_fit.show()
     modes.append(mode)
 

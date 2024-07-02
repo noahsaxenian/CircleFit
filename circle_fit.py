@@ -35,6 +35,9 @@ class CircleFit:
         self.phase = None
         self.B = 0
         self.interactive_plot = None
+        if freq_range:
+            self.freq_min = freq_range[0]
+            self.freq_max = freq_range[1]
 
         self.wide_freq = None
         self.wide_magnitudes = None

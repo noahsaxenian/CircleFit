@@ -49,7 +49,7 @@ def peak_ranges(data, distance = 1, prominence = 0.001, plot=True):
         freq_ranges.append((freq_min, freq_max))
 
     if plot:
-        plt.figure()
+        plt.figure(figsize=(12, 6))
         plt.plot(freqs, mag, label = "mag")
         colors = ['g', 'r', 'c', 'm', 'y']
         # Plotting frequency ranges
