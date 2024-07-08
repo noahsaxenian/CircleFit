@@ -12,31 +12,34 @@ class InteractivePeakFinder:
         self.peaks = None
         self.ranges = None
 
+        self.distance = 10
+        self.prominence = 0.8
+        self.width_multiplier = 0.5
+
         self.fig, self.ax = plt.subplots(figsize=(12, 6))
-        plt.subplots_adjust(bottom=0.2)
+        plt.subplots_adjust(bottom=0.3)
 
         # Add accept button
-        self.button_ax = plt.axes([0.45, 0.05, 0.1, 0.05])
+        self.button_ax = plt.axes([0.45, 0.02, 0.1, 0.05])
         self.accept_button = Button(self.button_ax, 'Accept')
         self.accept_button.on_clicked(self.accept_peaks)
 
-        self.prom_slider_ax = plt.axes([0.92, 0.2, 0.03, 0.65])
-        self.prom_slider = Slider(self.prom_slider_ax, 'Prominence', 0, 1, valinit=0.1, valstep=0.0001, orientation='vertical')
+        #self.prom_slider_ax = plt.axes([0.92, 0.2, 0.03, 0.65])
+        self.prom_slider_ax = plt.axes([0.2, 0.15, 0.65, 0.03])
+        self.prom_slider = Slider(self.prom_slider_ax, 'Prominence', 0, 1, valinit=self.prominence, valstep=0.0001, orientation='horizontal')
         self.prom_slider.on_changed(self.update_prom)
 
-        self.width_slider_ax = plt.axes([0.96, 0.2, 0.03, 0.65])
-        self.width_slider = Slider(self.width_slider_ax, 'Width Multiplier', 0, 1, valinit=0.8, valstep=0.01, orientation='vertical')
+        #self.width_slider_ax = plt.axes([0.96, 0.2, 0.03, 0.65])
+        self.width_slider_ax = plt.axes([0.2, 0.1, 0.65, 0.03])
+        self.width_slider = Slider(self.width_slider_ax, 'Width', 0, 1, valinit=self.width_multiplier, valstep=0.01, orientation='horizontal')
         self.width_slider.on_changed(self.update_width)
 
         # initialize data
         self.initialize_plot()
 
-        self.distance = None
-        self.prominence = None
-        self.width_multiplier = None
 
     def initialize_plot(self):
-        peak_freqs, peak_mags, freq_ranges = self.peak_ranges()
+        peak_freqs, peak_mags, freq_ranges = self.peak_ranges(prominence=self.prominence, width_multiplier=self.width_multiplier)
 
         self.peak_marks = []
         self.lower_lines = []
@@ -58,7 +61,7 @@ class InteractivePeakFinder:
 
         self.ax.set_xlabel('Frequency')
         self.ax.set_ylabel('Magnitude')
-        self.ax.set_title('Title')
+        self.ax.set_title('Identified Peaks')
         self.ax.relim()
         self.ax.autoscale_view()
 
@@ -135,6 +138,10 @@ class InteractivePeakFinder:
         self.peak_marks = []
         self.lower_lines = []
         self.upper_lines = []
+
+        self.ax.set_xlabel('Frequency')
+        self.ax.set_ylabel('Magnitude')
+        self.ax.set_title('Identified Peaks')
 
         freqs = self.data['freq (Hz)'].values
         real = self.data['real'].values

@@ -15,7 +15,7 @@ regenerated_file_path = 'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate
 siemens_fit = pd.read_csv(file_path, delimiter='\t')
 
 # Filter data to desired frequency range
-freq_range = [200, 400]
+freq_range = [1000, 1800]
 filtered_data = data[(data['freq (Hz)'] >= freq_range[0]) & (data['freq (Hz)'] <= freq_range[1])]
 siemens_fit = siemens_fit[(siemens_fit['freq (Hz)'] >= freq_range[0]) & (siemens_fit['freq (Hz)'] <= freq_range[1])]
 
@@ -70,7 +70,7 @@ def plot_mag_and_phase():
     ax1.plot(frequencies, magnitude, label='Simulated')
     ax1.plot(data_freqs, data_mag, 'x', label='Experimental')
     #ax1.plot(siemens_freqs, siemens_mag, label='Siemens Fit')
-    ax1.set_xlabel('Frequency (ω)')
+    ax1.set_xlabel('Frequency')
     ax1.set_ylabel('Magnitude')
     ax1.legend()
     ax1.grid(True)
@@ -80,7 +80,7 @@ def plot_mag_and_phase():
     ax2.plot(frequencies, phase, label='Simulated')
     ax2.plot(data_freqs, data_phase, 'x', label='Experimental')
     #ax2.plot(siemens_freqs, siemens_phase, label='Siemens Fit')
-    ax2.set_xlabel('Frequency (ω)')
+    ax2.set_xlabel('Frequency')
     ax2.set_ylabel('Phase')
     ax2.legend()
     ax2.grid(True)
@@ -97,7 +97,7 @@ def plot_real_and_imag():
     ax1.plot(frequencies, real, label='Simulated')
     ax1.plot(data_freqs, data_real, 'x', label='Experimental')
     #ax1.plot(siemens_freqs, siemens_mag, label='Siemens Fit')
-    ax1.set_xlabel('Frequency (ω)')
+    ax1.set_xlabel('Frequency')
     ax1.set_ylabel('Real')
     ax1.legend()
     ax1.grid(True)
@@ -107,7 +107,7 @@ def plot_real_and_imag():
     ax2.plot(frequencies, imag, label='Simulated')
     ax2.plot(data_freqs, data_imag, 'x', label='Experimental')
     #ax2.plot(siemens_freqs, siemens_phase, label='Siemens Fit')
-    ax2.set_xlabel('Frequency (ω)')
+    ax2.set_xlabel('Frequency')
     ax2.set_ylabel('Imaginary')
     ax2.legend()
     ax2.grid(True)

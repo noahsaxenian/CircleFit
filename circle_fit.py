@@ -183,9 +183,9 @@ class CircleFit:
         # Split frequencies and angles into lower and higher groups
         split = self.resonant_frequency
         lower_frequencies = self.frequencies[self.frequencies < split]
-        higher_frequencies = self.frequencies[self.frequencies >= split]
+        higher_frequencies = self.frequencies[self.frequencies > split]
         lower_angles = self.angles[self.frequencies < split]
-        higher_angles = self.angles[self.frequencies >= split]
+        higher_angles = self.angles[self.frequencies > split]
 
         # Initialize array for damping coefficients
         damping_coeffs = []

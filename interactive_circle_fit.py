@@ -1,6 +1,5 @@
 from circle_fit import CircleFit
 import matplotlib.pyplot as plt
-from matplotlib.widgets import Slider
 from matplotlib.widgets import SpanSelector, Button
 import numpy as np
 
@@ -69,7 +68,7 @@ class InteractiveCircleFit:
         self.axs[1].legend()
         self.axs[1].grid(True)
         self.axs[1].axis('equal')
-        self.axs[1].set_title('Circle Fit to Mode Data')
+        self.axs[1].set_title('Circle Fit')
 
         for ax in self.axs:
             ax.relim()
