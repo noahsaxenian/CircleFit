@@ -29,6 +29,8 @@ def plot_mag_and_phase(frequencies, magnitude, phase):
     plt.xlabel('Frequency')
     plt.ylabel('Magnitude')
     plt.title('Magnitude')
+    plt.yscale('log')
+    #plt.xscale('log')
     plt.legend()
     plt.grid(True)
 

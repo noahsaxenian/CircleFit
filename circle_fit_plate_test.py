@@ -8,10 +8,10 @@ from interactive_circle_fit import InteractiveCircleFit
 from interactive_peak_finder import InteractivePeakFinder
 
 # Load your FRF data from a CSV file
-file_path = 'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point1_data_receptance.tsv'
+file_path = 'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point1_data.tsv'
 data = pd.read_csv(file_path, delimiter='\t')
 
-regenerated_file_path = 'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point6_regenerated_receptance.tsv'
+regenerated_file_path = 'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point1_regenerated.tsv'
 siemens_fit = pd.read_csv(file_path, delimiter='\t')
 
 # Filter data to desired frequency range
@@ -72,6 +72,7 @@ def plot_mag_and_phase():
     #ax1.plot(siemens_freqs, siemens_mag, label='Siemens Fit')
     ax1.set_xlabel('Frequency')
     ax1.set_ylabel('Magnitude')
+    ax1.set_yscale('log')
     ax1.legend()
     ax1.grid(True)
 
@@ -99,6 +100,7 @@ def plot_real_and_imag():
     #ax1.plot(siemens_freqs, siemens_mag, label='Siemens Fit')
     ax1.set_xlabel('Frequency')
     ax1.set_ylabel('Real')
+    #ax1.set_yscale('log')
     ax1.legend()
     ax1.grid(True)
 
@@ -109,6 +111,7 @@ def plot_real_and_imag():
     #ax2.plot(siemens_freqs, siemens_phase, label='Siemens Fit')
     ax2.set_xlabel('Frequency')
     ax2.set_ylabel('Imaginary')
+    #ax2.set_yscale('log')
     ax2.legend()
     ax2.grid(True)
 

@@ -11,41 +11,61 @@ file_path = 'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/Plate 
 sheet_name = 'SI FRFs and synthesized'  # Replace with the actual sheet name
 
 # Read the Excel file from the specified sheet, skip header rows (adjust skiprows as necessary)
+#df = pd.read_excel(file_path, sheet_name=sheet_name, skiprows=232)  # Adjust skiprows as needed
 df = pd.read_excel(file_path, sheet_name=sheet_name, skiprows=232)  # Adjust skiprows as needed
+#print(df)
+
+data = []
+simulated = []
+
+for i in range(16):
+    datapoint = df.iloc[:, [12*i, (12*i)+1, (12*i)+2]]
+    simulatedpoint = df.iloc[:, [(12*i)+3, (12 * i) + 4, (12 * i) + 5]]
+    datapoint.columns = ['freq (Hz)', 'real', 'complex']
+    simulatedpoint.columns = ['freq (Hz)', 'real', 'complex']
+    data.append(datapoint)
+    simulated.append(simulatedpoint)
 
 
-for i in range(10):
-    # Select the desired columns by their index (adjust column indices as necessary)
-    data = df.iloc[:, [3, 4, 5]]  # Adjust indices to select correct columns
+# # Function to compare DataFrames
+# def compare_dataframes(df_list):
+#     identical_pairs = []
+#     n = len(df_list)
+#
+#     for i in range(n):
+#         for j in range(i + 1, n):
+#             if df_list[i].equals(df_list[j]):
+#                 identical_pairs.append((i, j))
+#
+#     return identical_pairs
+#
+#
+# # Get the list of identical DataFrame pairs
+# identical_pairs = compare_dataframes(data)
+#
+# # Print the results
+# if identical_pairs:
+#     print("Identical DataFrame pairs (by indices):")
+#     for pair in identical_pairs:
+#         print(f"DataFrame {pair[0]} and DataFrame {pair[1]}")
+# else:
+#     print("No identical DataFrames found.")
 
-    # Rename the columns
-    data.columns = ['freq (Hz)', 'real', 'complex']
 
 
-    ### Convert mobility to receptance
-    # Extract frequency, real, and imaginary parts from the dataframe
-    frequencies = data['freq (Hz)'].values
-    real_parts = data['real'].values
-    imaginary_parts = data['complex'].values
-
-    # Convert frequency to angular frequency (rad/s)
-    omega = 2 * np.pi * frequencies
-
-    # Combine real and imaginary parts to form complex mobility data
-    mobility = real_parts + 1j * imaginary_parts
-
-    # Calculate receptance
-    receptance = mobility / (1j * omega)
-
-    # Create a new dataframe to store the results
-    result_df = pd.DataFrame({
-        'freq (Hz)': frequencies,
-        'real': receptance.real,
-        'complex': receptance.imag
-    })
-
+for i in range(len(data)):
+    # print(data[i])
+    # print(simulated[i])
     # Save the receptance data to a new TSV file
-    data.to_csv('C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point1_regenerated_receptance.tsv', sep='\t', index=False)
-
-    # Print the result for verification
-    #print(data)
+    if i < 4:
+        data[i].to_csv(f'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point{i+1}_data.tsv', sep='\t', index=False)
+        simulated[i].to_csv(f'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point{i + 1}_regenerated.tsv', sep='\t', index=False)
+    elif i < 8:
+        data[i].to_csv(f'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point{i+2}_data.tsv', sep='\t', index=False)
+        simulated[i].to_csv(f'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point{i + 2}_regenerated.tsv', sep='\t', index=False)
+    elif i < 12:
+        data[i].to_csv(f'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point{i+3}_data.tsv', sep='\t', index=False)
+        simulated[i].to_csv(f'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point{i + 3}_regenerated.tsv', sep='\t', index=False)
+    else:
+        data[i].to_csv(f'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point{i+4}_data.tsv', sep='\t', index=False)
+        simulated[i].to_csv(f'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point{i + 4}_regenerated.tsv', sep='\t', index=False)

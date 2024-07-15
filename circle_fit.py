@@ -172,7 +172,35 @@ class CircleFit:
             print(self.resonant_frequency)
             self.theta = self.angles[np.argmax(self.magnitudes)]
 
+
         self.omega = self.resonant_frequency * 2 * np.pi
+
+        # # Plot freq vs angles
+        # plt.figure(figsize=(12, 6))
+        #
+        # # Plot freq vs angles
+        # plt.subplot(1, 2, 1)
+        # plt.plot(self.frequencies, self.angles, label='Angles')
+        # plt.plot(self.resonant_frequency, self.theta, 'o')
+        # plt.xlabel('Frequency (Hz)')
+        # plt.ylabel('Angles (radians)')
+        # plt.title('Frequency vs Angles')
+        # plt.legend()
+        # plt.grid(True)
+        #
+        # # Plot freq vs raw_angles
+        # plt.subplot(1, 2, 2)
+        # plt.plot(self.frequencies, raw_angles, label='Raw Angles', color='orange')
+        # plt.plot(self.resonant_frequency, self.theta, 'o')
+        # plt.xlabel('Frequency (Hz)')
+        # plt.ylabel('Raw Angles (radians)')
+        # plt.title('Frequency vs Raw Angles')
+        # plt.legend()
+        # plt.grid(True)
+        #
+        # # Show the plots
+        # plt.tight_layout()
+        # plt.show()
 
 
     def calculate_damping(self):
@@ -209,9 +237,15 @@ class CircleFit:
         """ Calculates modal constant magnitude and phase
         Calculates residual """
         magA = (self.omega ** 2) * self.damping * (2 * self.r)
-        x_pos = self.h + self.r * np.cos(self.theta)
-        y_pos = self.k + self.r * np.sin(self.theta)
-        self.phase = np.atan2(y_pos, x_pos) + np.pi / 2
+        # x_pos = self.h + self.r * np.cos(self.theta)
+        # y_pos = self.k + self.r * np.sin(self.theta)
+        # angle = np.atan2(y_pos, x_pos)
+        # print(magA)
+        # print(angle)
+        # self.phase = angle + np.pi/2
+        # self.A = magA * np.cos(angle) + 1j * magA * np.sin(angle)
+        self.phase = self.theta + (np.pi/2)
+        #self.A = magA * np.sin(self.phase) + 1j * -magA * np.cos(self.phase)
         self.A = magA * np.cos(self.phase) + 1j * magA * np.sin(self.phase)
 
         B_x = self.h + self.r * np.cos(self.theta + np.pi)

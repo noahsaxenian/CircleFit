@@ -3,12 +3,13 @@ import numpy as np
 
 import plotting
 
-frequencies = np.linspace(0, 1000, 1000)
+frequencies = np.linspace(0, 60000, 10000)
 omega = frequencies * 2 * np.pi
 alpha = np.zeros(len(frequencies)) + 0j
 
 # enter [freq, A  , n    ]
-modes = [[500, 200 + 20j, 0.02]]
+modes = [[30000, 200, 0.02]]
+
 
 for mode in modes:
     w_r = mode[0] * 2 * np.pi
@@ -32,4 +33,4 @@ plotting.plot_mag_and_phase(frequencies, magnitude, phase)
 #plotting.plot_real_vs_imag(real, imag)
 
 # Save the receptance data to a new TSV file
-fake_data.to_csv('c:/Users/noahs/Documents/ceeo/modal stuff/Code/data/Plate/Plate 03/csv/fake_data_1.tsv', sep='\t', index=False)
+fake_data.to_csv('c:/Users/noahs/Documents/ceeo/modal stuff/Code/data/Plate/Plate 03/csv/fake_data_2.tsv', sep='\t', index=False)

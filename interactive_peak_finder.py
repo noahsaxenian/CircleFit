@@ -49,7 +49,8 @@ class InteractivePeakFinder:
         real = self.data['real'].values
         imag = self.data['complex'].values
         mag = np.sqrt(real ** 2 + imag ** 2)
-        self.ax.plot(freqs, mag, label="mag")
+        self.ax.plot(freqs, mag)
+        self.ax.set_yscale('log')
 
         colors = ['g', 'r', 'c', 'm', 'y']
         # Plotting frequency ranges
@@ -142,6 +143,7 @@ class InteractivePeakFinder:
         self.ax.set_xlabel('Frequency')
         self.ax.set_ylabel('Magnitude')
         self.ax.set_title('Identified Peaks')
+        self.ax.set_yscale('log')
 
         freqs = self.data['freq (Hz)'].values
         real = self.data['real'].values

@@ -57,6 +57,7 @@ class InteractiveCircleFit:
         self.axs[0].set_xlabel('Frequency')
         self.axs[0].set_ylabel('Magnitude')
         self.axs[0].set_title('Adjust Range Around Peak')
+        #self.axs[0].set_yscale('log')
 
         self.data_scatter = self.axs[1].scatter(real, cplx, label='Data')
         self.circle_plot, = self.axs[1].plot(x_fit, y_fit, label='Fitted Circle', color='red')
@@ -128,6 +129,7 @@ class InteractiveCircleFit:
 
     def accept_range(self, event):
         #plt.close(self.fig)
+        self.circle_fit.summarize_results()
         self.update_circle()
 
     def update_circle(self):
