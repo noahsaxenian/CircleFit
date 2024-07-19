@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 # Read the mobility data from the TSV file
-file_path = 'c:/Users/noahs/Documents/ceeo/modal stuff/Code/data/Plate/Plate 03/csv/Plate 03 H_001_trf.tsv'  # Replace with your file path
+file_path = 'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point1_data.tsv'  # Replace with your file path
 data = pd.read_csv(file_path, delimiter='\t')
 
 # Extract frequency, real, and imaginary parts from the dataframe
@@ -27,7 +27,8 @@ result_df = pd.DataFrame({
 })
 
 # Save the receptance data to a new TSV file
-result_df.to_csv('c:/Users/noahs/Documents/ceeo/modal stuff/Code/data/Plate/Plate 03/csv/Plate 03 receptance.tsv', sep='\t', index=False)
+result_df.to_csv('C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point1_data_receptance.tsv', sep='\t', index=False)
 
 # Print the result for verification
+print(data)
 print(result_df)

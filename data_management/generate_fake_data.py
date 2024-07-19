@@ -3,13 +3,23 @@ import numpy as np
 
 import plotting
 
-frequencies = np.linspace(0, 60000, 10000)
+frequencies = np.linspace(0, 2000, 2000)
 omega = frequencies * 2 * np.pi
 alpha = np.zeros(len(frequencies)) + 0j
 
-# enter [freq, A  , n    ]
-modes = [[30000, 200, 0.02]]
+A_mag = 0.0873
+A_phase = np.pi
+A_real = A_mag * np.cos(A_phase)
+A_imag = A_mag * np.sin(A_phase)
 
+B_mag = 0.0873
+B_phase = 0.5716
+B_real = B_mag * np.cos(B_phase)
+B_imag = B_mag * np.sin(B_phase)
+
+# enter [freq, A  , n    ]
+modes = [[500, A_real + 1j*A_imag, 0.02],
+         [800, B_real + 1j*B_imag, 0.02]]
 
 for mode in modes:
     w_r = mode[0] * 2 * np.pi
@@ -21,6 +31,7 @@ imag = np.imag(alpha)
 
 magnitude = np.sqrt(real**2 + imag**2)
 phase = np.arctan2(imag, real)
+plotting.plot_mag_and_phase(frequencies, magnitude, phase)
 
 # Create a new dataframe to store the results
 fake_data = pd.DataFrame({
@@ -29,7 +40,7 @@ fake_data = pd.DataFrame({
     'complex': imag
 })
 
-plotting.plot_mag_and_phase(frequencies, magnitude, phase)
+
 #plotting.plot_real_vs_imag(real, imag)
 
 # Save the receptance data to a new TSV file

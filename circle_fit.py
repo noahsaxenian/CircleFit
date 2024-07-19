@@ -153,7 +153,7 @@ class CircleFit:
         ''' Evaluates angles from center of circle to each point
         Fits a spline to the angles against frequencies
         Take derivative, location of max rate of angle change is natural frequency '''
-        raw_angles = np.arctan2(self.cplx - self.k, self.real - self.h) % (2 * np.pi)
+        raw_angles = np.arctan2(self.cplx - self.k, self.real - self.h)
         self.angles = np.unwrap(raw_angles)
 
         try:
