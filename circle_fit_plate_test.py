@@ -9,15 +9,12 @@ from interactive_peak_finder import InteractivePeakFinder
 
 # Load your FRF data from a CSV file
 file_path = 'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point1_data.tsv'
+#file_path = 'C:/Users/noahs/Documents/ceeo/modal stuff/Code/data/Plate/Plate 04/csv/Plate 04 H_001_trf.tsv'
 data = pd.read_csv(file_path, delimiter='\t')
-
-regenerated_file_path = 'C:/Users/noahs/Documents/ceeo/modal stuff/Siemens Plate Test/point1_regenerated.tsv'
-siemens_fit = pd.read_csv(regenerated_file_path, delimiter='\t')
 
 # Filter data to desired frequency range
 freq_range = [610, 1510]
 filtered_data = data[(data['freq (Hz)'] >= freq_range[0]) & (data['freq (Hz)'] <= freq_range[1])]
-siemens_fit = siemens_fit[(siemens_fit['freq (Hz)'] >= freq_range[0]) & (siemens_fit['freq (Hz)'] <= freq_range[1])]
 
 # Find peaks and ranges
 #peaks, peak_ranges = peak_finder.peak_ranges(filtered_data, distance=10, prominence=10)
@@ -27,9 +24,8 @@ peak_ranges = p.ranges
 
 
 # Create array of circle fits for each peak
-modes = [CircleFit(data, peak, freq_range=freq_range) for peak, freq_range in zip(peaks, peak_ranges)]
-for mode in modes:
-    mode.run()
+#modes = [CircleFit(data, peak, freq_range=freq_range) for peak, freq_range in zip(peaks, peak_ranges)]
+modes = [CircleFit(data, peak) for peak in peaks]
 
 # Interactive plot to help choose best range of points for each peak
 interactive_fit = InteractiveCircleFit(modes)
@@ -40,7 +36,7 @@ omega = frequencies * 2 * np.pi
 alpha = np.zeros(len(frequencies)) + 0j
 
 for mode in modes:
-    alpha += mode.A / (mode.omega ** 2 - omega ** 2 + 1j * mode.damping * mode.omega ** 2)
+    alpha += mode.A / (mode.omega_r ** 2 - omega ** 2 + 1j * mode.damping * mode.omega_r ** 2)
 
 # ### mass and stiffness residuals calculation
 # data_comparison = filtered_data['real'].values + 1j * filtered_data['complex'].values
@@ -55,8 +51,10 @@ for mode in modes:
 ### residuals as pseudo modes
 data_comparison = filtered_data['real'].values + 1j * filtered_data['complex'].values
 #choice of natural frequencies of pseudo modes
-omega_r1 = (freq_range[0] - 100) * 2 * np.pi
-omega_r2 = (freq_range[-1] + 100) * 2 * np.pi
+# omega_r1 = (freq_range[0] - 100) * 2 * np.pi
+# omega_r2 = (freq_range[-1] + 100) * 2 * np.pi
+omega_r1 = 532*2*np.pi
+omega_r2 = 1718*2*np.pi
 
 k1 = 1 / ((1 - (omega[0]**2/omega_r1**2)) * (data_comparison[0] - alpha[0]))
 k1_average = np.mean([1 / ((1 - (omega[i]**2 / omega_r1**2)) * (data_comparison[i] - alpha[i])) for i in range(3)])
@@ -97,13 +95,6 @@ data_real = filtered_data['real'].values
 data_imag = filtered_data['complex'].values
 data_mag = np.sqrt(data_real**2 + data_imag**2)
 data_phase = np.arctan2(data_imag, data_real)
-
-siemens_freqs = siemens_fit['freq (Hz)']
-siemens_real = siemens_fit['real']
-siemens_imag = siemens_fit['complex']
-siemens_mag = np.sqrt(siemens_real**2 + siemens_imag**2)
-siemens_phase = np.arctan2(siemens_imag, siemens_real)
-
 
 
 def plot_mag_and_phase():

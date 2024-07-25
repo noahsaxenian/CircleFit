@@ -23,9 +23,7 @@ peaks, peak_ranges = peak_finder.peak_ranges(filtered_data, distance=10, promine
 
 
 # Create array of circle fits for each peak
-modes = [CircleFit(data, peak, freq_range=freq_range) for peak, freq_range in zip(peaks, peak_ranges)]
-for mode in modes:
-    mode.run()
+modes = [CircleFit(data, peak) for peak in peaks]
 
 # Interactive plot to help choose best range of points for each peak
 interactive_fit = InteractiveCircleFit(modes)
@@ -36,7 +34,7 @@ omega = frequencies * 2 * np.pi
 alpha = np.zeros(len(frequencies)) + 0j
 
 for mode in modes:
-    alpha += mode.A / (mode.omega ** 2 - omega ** 2 + 1j * mode.damping * mode.omega ** 2)
+    alpha += mode.A / (mode.omega_r ** 2 - omega ** 2 + 1j * mode.damping * mode.omega_r ** 2)
 
 
 real = np.real(alpha)

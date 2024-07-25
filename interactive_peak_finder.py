@@ -26,7 +26,8 @@ class InteractivePeakFinder:
 
         #self.prom_slider_ax = plt.axes([0.92, 0.2, 0.03, 0.65])
         self.prom_slider_ax = plt.axes([0.2, 0.15, 0.65, 0.03])
-        self.prom_slider = Slider(self.prom_slider_ax, 'Prominence', 0, 1, valinit=self.prominence, valstep=0.0001, orientation='horizontal')
+        slider_value = np.log10(self.prominence) + 5
+        self.prom_slider = Slider(self.prom_slider_ax, 'Prominence', 0, 10, valinit=slider_value, valstep=0.0001, orientation='horizontal')
         self.prom_slider.on_changed(self.update_prom)
 
         #self.width_slider_ax = plt.axes([0.96, 0.2, 0.03, 0.65])
@@ -48,7 +49,10 @@ class InteractivePeakFinder:
         freqs = self.data['freq (Hz)'].values
         real = self.data['real'].values
         imag = self.data['complex'].values
-        mag = np.sqrt(real ** 2 + imag ** 2)
+        if 'magnitude' in self.data.columns:
+            mag = self.data['magnitude'].values
+        else:
+            mag = np.sqrt(real ** 2 + imag ** 2)
         self.ax.plot(freqs, mag)
         self.ax.set_yscale('log')
 
@@ -56,9 +60,9 @@ class InteractivePeakFinder:
         # Plotting frequency ranges
         for i, (low, high) in enumerate(freq_ranges):
             color = colors[i % len(colors)]
-            self.peak_marks.append(self.ax.plot(peak_freqs[i], peak_mags[i], 'x', color=color))
-            self.lower_lines.append(self.ax.axvline(x=low, color=color, linestyle='--', linewidth=1))
-            self.upper_lines.append(self.ax.axvline(x=high, color=color, linestyle='--', linewidth=1))
+            self.peak_marks.append(self.ax.plot(peak_freqs[i], peak_mags[i], 'x', color='r'))
+            #self.lower_lines.append(self.ax.axvline(x=low, color=color, linestyle='--', linewidth=1))
+            #self.upper_lines.append(self.ax.axvline(x=high, color=color, linestyle='--', linewidth=1))
 
         self.ax.set_xlabel('Frequency')
         self.ax.set_ylabel('Magnitude')
@@ -74,7 +78,10 @@ class InteractivePeakFinder:
         freqs = self.data['freq (Hz)'].values
         real = self.data['real'].values
         imag = self.data['complex'].values
-        mag = np.sqrt(real ** 2 + imag ** 2)
+        if 'magnitude' in self.data.columns:
+            mag = self.data['magnitude'].values
+        else:
+            mag = np.sqrt(real ** 2 + imag ** 2)
         phase = np.arctan2(imag, real)
 
         # Detect peaks
@@ -122,7 +129,7 @@ class InteractivePeakFinder:
 
 
     def update_prom(self, val):
-        self.prominence = self.prom_slider.val
+        self.prominence = 10 ** (self.prom_slider.val - 5)
 
         peak_freqs, peak_mags, freq_ranges = self.peak_ranges(prominence=self.prominence)
 
@@ -148,16 +155,19 @@ class InteractivePeakFinder:
         freqs = self.data['freq (Hz)'].values
         real = self.data['real'].values
         imag = self.data['complex'].values
-        mag = np.sqrt(real ** 2 + imag ** 2)
+        if 'magnitude' in self.data.columns:
+            mag = self.data['magnitude'].values
+        else:
+            mag = np.sqrt(real ** 2 + imag ** 2)
         self.ax.plot(freqs, mag, label="mag")
 
         colors = ['g', 'r', 'c', 'm', 'y']
         # Plotting frequency ranges
         for i, (low, high) in enumerate(freq_ranges):
             color = colors[i % len(colors)]
-            self.peak_marks.append(self.ax.plot(peak_freqs[i], peak_mags[i], 'x', color=color))
-            self.lower_lines.append(self.ax.axvline(x=low, color=color, linestyle='--', linewidth=1))
-            self.upper_lines.append(self.ax.axvline(x=high, color=color, linestyle='--', linewidth=1))
+            self.peak_marks.append(self.ax.plot(peak_freqs[i], peak_mags[i], 'x', color='r'))
+            #self.lower_lines.append(self.ax.axvline(x=low, color=color, linestyle='--', linewidth=1))
+            #self.upper_lines.append(self.ax.axvline(x=high, color=color, linestyle='--', linewidth=1))
 
         self.fig.canvas.draw_idle()
 
@@ -167,8 +177,9 @@ class InteractivePeakFinder:
 
         # Plotting frequency ranges
         for i, (low, high) in enumerate(freq_ranges):
-            self.lower_lines[i].set_xdata([low, low])
-            self.upper_lines[i].set_xdata([high, high])
+            print('skip')
+            #self.lower_lines[i].set_xdata([low, low])
+            #self.upper_lines[i].set_xdata([high, high])
 
         self.fig.canvas.draw_idle()
 

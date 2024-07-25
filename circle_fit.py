@@ -3,17 +3,15 @@ from scipy.optimize import least_squares
 from scipy.interpolate import UnivariateSpline, interp1d
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-import time
 mpl.use('TkAgg')
 
 class CircleFit:
-    '''Circle fitting class for a single mode
-    use run() if number of points surrounding each mode is already selected
-    use choose_points() to test out how number of points affects fit'''
-    def __init__(self, data, freq_est, points=10, freq_range=None):
+    '''Circle fitting class for a single mode'''
+    def __init__(self, data, freq_est, db_thresh=3, freq_range=None):
         self.data = data
         self.freq_est = freq_est
-        self.points = points
+        self.points = None
+        self.db_threshold = db_thresh
         self.freq_min = None
         self.freq_max = None
         self.freq = None
@@ -27,7 +25,7 @@ class CircleFit:
         self.omegas = None
         self.angles = None
         self.resonant_frequency = None
-        self.omega = None
+        self.omega_r = None
         self.theta = None
         self.damping = None
         self.damping_std = None
@@ -37,11 +35,14 @@ class CircleFit:
         self.interactive_plot = None
         self.wide_freq = None
         self.wide_magnitudes = None
+        self.quality_factor = None
 
         if freq_range:
             self.filter_data(freq_range=freq_range)
         else:
-            self.filter_data(num_points=self.points)
+            self.filter_data()
+
+        self.run()
 
 
     def run(self):
@@ -52,7 +53,7 @@ class CircleFit:
         self.calculate_modal_parameters()
 
 
-    def filter_data(self, num_points=10, freq_range=None):
+    def filter_data(self, freq_range=None):
         ''' Filters data input to the inputted number of points
         surrounding frequency estimate '''
 
@@ -65,11 +66,40 @@ class CircleFit:
             end_index = np.abs(self.data['freq (Hz)'] - self.freq_max).idxmin()
 
         else:
+            self.data['amplitude'] = np.sqrt(self.data['real'] ** 2 + self.data['complex'] ** 2)
             # Find the index of the closest frequency to self.freq_est
             closest_index = np.abs(self.data['freq (Hz)'] - self.freq_est).idxmin()
+            # Find the peak amplitude at the closest frequency
+            peak_amplitude = self.data['amplitude'].iloc[closest_index]
+            # Calculate the threshold amplitude in linear scale (assuming amplitude is in linear scale)
+            threshold_amplitude = peak_amplitude / (10 ** (self.db_threshold / 20))
+            # Create a boolean mask where amplitude is above the threshold
+            above_threshold = self.data['amplitude'] >= threshold_amplitude
+            # Find the start and end indices of the continuous segment around the peak
+            start_index = closest_index
+            end_index = closest_index
+            # Expand the range to the left
+            for i in range(closest_index - 1, -1, -1):
+                if above_threshold[i]:
+                    start_index = i
+                else:
+                    break
+            # Expand the range to the right
+            for i in range(closest_index + 1, len(self.data)):
+                if above_threshold[i]:
+                    end_index = i
+                else:
+                    break
+
+            # Ensure indices are within the valid range
+            start_index = max(0, start_index)
+            end_index = min(len(self.data) - 1, end_index)
+
+        if end_index - start_index < 4:
+            print('Range includes too few points, increasing to 5 points')
             # Calculate the start and end indices
-            start_index = max(0, closest_index - num_points)
-            end_index = min(len(self.data) - 1, closest_index + num_points)
+            start_index = max(0, closest_index - 2)
+            end_index = min(len(self.data) - 1, closest_index + 2)
 
         # Filter the data
         filtered_data = self.data.iloc[start_index:end_index + 1]
@@ -91,36 +121,6 @@ class CircleFit:
         wide_cplx = wide_filtered_data['complex'].values
         self.wide_magnitudes = np.sqrt(wide_real ** 2 + wide_cplx ** 2)
 
-    def filter_data_range(self, freq_min, freq_max):
-        ''' Filters data input to the inputted frequency range '''
-
-        self.freq_min = freq_min
-        self.freq_max = freq_max
-
-        # Calculate the start and end indices
-        start_index = np.abs(self.data['freq (Hz)'] - self.freq_min).idxmin()
-        end_index = np.abs(self.data['freq (Hz)'] - self.freq_max).idxmin()
-
-        # Filter the data
-        filtered_data = self.data.iloc[start_index:end_index + 1]
-        self.freq = filtered_data['freq (Hz)']
-        self.real = filtered_data['real']
-        self.cplx = filtered_data['complex']
-        self.frequencies = self.freq.values
-        self.omegas = self.frequencies * 2 * np.pi
-        self.freq_min = min(self.freq)
-        self.freq_max = max(self.freq)
-        self.magnitudes = np.sqrt(self.real**2 + self.cplx**2)
-
-        # get wide filter
-        start_index = np.abs(self.data['freq (Hz)'] - (self.freq_min - 10)).idxmin()
-        end_index = np.abs(self.data['freq (Hz)'] - (self.freq_max + 10)).idxmin()
-        wide_filtered_data = self.data.iloc[start_index:end_index + 1]
-        self.wide_freq = wide_filtered_data['freq (Hz)'].values
-        wide_real = wide_filtered_data['real'].values
-        wide_cplx = wide_filtered_data['complex'].values
-        self.wide_magnitudes = np.sqrt(wide_real ** 2 + wide_cplx ** 2)
-
 
     def fit_circle(self):
         ''' Function to fit circle
@@ -130,7 +130,8 @@ class CircleFit:
         def residuals(params, x, y):
             # Used for circle fitting
             h, k, r = params
-            return (x - h) ** 2 + (y - k) ** 2 - r ** 2
+            distances = np.sqrt((x - h) ** 2 + (y - k) ** 2)
+            return distances - r
 
         x = self.real
         y = self.cplx
@@ -147,6 +148,13 @@ class CircleFit:
         # Perform least squares fitting
         result = least_squares(residuals, initial_guess, args=(x, y))
         self.h, self.k, self.r = result.x
+
+        # Calculate the mean square deviation (quality factor)
+        residuals_final = residuals(result.x, x, y)
+        msd = np.mean(residuals_final**2)
+        self.quality_factor = 1 - 10*(msd / self.r**2)
+        if self.quality_factor < 0: self.quality_factor = 0
+        print(f'quality factor: {self.quality_factor}')
 
 
     def calculate_resonant_frequency(self):
@@ -172,35 +180,7 @@ class CircleFit:
             print(self.resonant_frequency)
             self.theta = self.angles[np.argmax(self.magnitudes)]
 
-
-        self.omega = self.resonant_frequency * 2 * np.pi
-
-        # # Plot freq vs angles
-        # plt.figure(figsize=(12, 6))
-        #
-        # # Plot freq vs angles
-        # plt.subplot(1, 2, 1)
-        # plt.plot(self.frequencies, self.angles, label='Angles')
-        # plt.plot(self.resonant_frequency, self.theta, 'o')
-        # plt.xlabel('Frequency (Hz)')
-        # plt.ylabel('Angles (radians)')
-        # plt.title('Frequency vs Angles')
-        # plt.legend()
-        # plt.grid(True)
-        #
-        # # Plot freq vs raw_angles
-        # plt.subplot(1, 2, 2)
-        # plt.plot(self.frequencies, raw_angles, label='Raw Angles', color='orange')
-        # plt.plot(self.resonant_frequency, self.theta, 'o')
-        # plt.xlabel('Frequency (Hz)')
-        # plt.ylabel('Raw Angles (radians)')
-        # plt.title('Frequency vs Raw Angles')
-        # plt.legend()
-        # plt.grid(True)
-        #
-        # # Show the plots
-        # plt.tight_layout()
-        # plt.show()
+        self.omega_r = self.resonant_frequency * 2 * np.pi
 
 
     def calculate_damping(self):
@@ -226,7 +206,7 @@ class CircleFit:
             theta_a = abs(higher_angles[i] - theta)
             theta_b = abs(lower_angles[-i-1] - theta)
             # Equation for damping coefficient
-            n = (w_a ** 2 - w_b ** 2) / (self.omega ** 2 * (np.tan(theta_a / 2) + np.tan(theta_b / 2)))
+            n = (w_a ** 2 - w_b ** 2) / (self.omega_r ** 2 * (np.tan(theta_a / 2) + np.tan(theta_b / 2)))
             damping_coeffs.append(n)
 
         self.damping = np.mean(damping_coeffs)
@@ -236,14 +216,7 @@ class CircleFit:
     def calculate_modal_parameters(self):
         """ Calculates modal constant magnitude and phase
         Calculates residual """
-        magA = (self.omega ** 2) * self.damping * (2 * self.r)
-        # x_pos = self.h + self.r * np.cos(self.theta)
-        # y_pos = self.k + self.r * np.sin(self.theta)
-        # angle = np.atan2(y_pos, x_pos)
-        # print(magA)
-        # print(angle)
-        # self.phase = angle + np.pi/2
-        # self.A = magA * np.cos(angle) + 1j * magA * np.sin(angle)
+        magA = (self.omega_r ** 2) * self.damping * (2 * self.r)
         self.phase = self.theta + (np.pi/2)
         #self.A = magA * np.sin(self.phase) + 1j * -magA * np.cos(self.phase)
         self.A = magA * np.cos(self.phase) + 1j * magA * np.sin(self.phase)

@@ -7,7 +7,10 @@ def peak_ranges(data, distance = 1, prominence = 0.001, plot=True):
     freqs = data['freq (Hz)'].values
     real = data['real'].values
     imag = data['complex'].values
-    mag = np.sqrt(real**2 + imag**2)
+    if 'magnitude' in data.columns:
+        mag = data['magnitude'].values
+    else:
+        mag = np.sqrt(real ** 2 + imag ** 2)
     phase = np.arctan2(imag, real)
 
     # Detect peaks
@@ -59,9 +62,45 @@ def peak_ranges(data, distance = 1, prominence = 0.001, plot=True):
             plt.axvline(x=low, color=color, linestyle='--', linewidth=1)
             plt.axvline(x=high, color=color, linestyle='--', linewidth=1)
             #plt.fill_betweenx([0, max(mag)], low, high, alpha=0.1, color='r')
+        plt.yscale('log')
         plt.legend()
         plt.show()
 
     print("Peaks found: " + str(peak_freqs))
 
     return peak_freqs, freq_ranges
+
+
+def get_peaks(data, distance = 1, prominence = 0.001, plot=True):
+    freqs = data['freq (Hz)'].values
+    real = data['real'].values
+    imag = data['complex'].values
+    if 'magnitude' in data.columns:
+        mag = data['magnitude'].values
+    else:
+        mag = np.sqrt(real ** 2 + imag ** 2)
+    phase = np.arctan2(imag, real)
+
+    # Detect peaks
+    peak_indices, properties = find_peaks(mag, height=0, distance=distance, prominence=prominence)
+
+    #print(peak_indices)
+    peak_freqs = freqs[peak_indices]
+    peak_mags = mag[peak_indices]
+    prominences = properties['prominences']
+    #print(peak_freqs)
+
+
+    if plot:
+        plt.figure(figsize=(12, 6))
+        plt.plot(freqs, mag, label = "mag")
+        # Plotting frequency ranges
+        for peak_freq, peak_mag in zip(peak_freqs, peak_mags):
+            plt.plot(peak_freq, peak_mag, 'x', color='r')
+        plt.yscale('log')
+        plt.legend()
+        plt.show()
+
+    #print("Peaks found: " + str(peak_freqs))
+
+    return peak_freqs
