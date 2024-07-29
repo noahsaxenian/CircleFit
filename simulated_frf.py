@@ -83,8 +83,8 @@ class SimulatedFRF():
             self.alpha += A / (omega_r ** 2 - self.omegas ** 2 + 1j * eta * omega_r ** 2)
 
         if self.residuals:
-            residual_1 = ((1 / self.r_k1) / (1 - (self.omegas ** 2 / self.r_w1 ** 2)))
-            residual_2 = ((1 / self.r_k2) / (1 - (self.omegas ** 2 / self.r_w2 ** 2)))
+            residual_1 = self.r_A1 / (1 - (self.omegas ** 2 / self.r_w1 ** 2))
+            residual_2 = self.r_A2 / (1 - (self.omegas ** 2 / self.r_w2 ** 2))
             self.alpha_corrected = self.alpha + residual_1 + residual_2
 
         return self.alpha
