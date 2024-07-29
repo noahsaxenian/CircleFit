@@ -32,7 +32,6 @@ for i in range(16):
     plate.curve_fit(data[i], i, 6, interactive=False)
 
 plate.calculate_mode_shapes(6)
-plate.correct_modal_properties()
 
 for i in range(plate.n):
     plate.plot_mode_shape(i)

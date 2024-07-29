@@ -3,7 +3,7 @@ from circle_fit_mobility import CircleFit
 import pandas as pd
 from interactive_peak_finder import InteractivePeakFinder
 from interactive_circle_fit import InteractiveCircleFit
-from simulated_frf import SimulatedFRF
+from reconstructed_frf import ReconstructedFRF
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d import Axes3D
@@ -11,8 +11,20 @@ from scipy.interpolate import griddata
 import peak_finder
 
 class ModalAnalysis():
+    """
+    Class to perform modal analysis, including:
+    curve fitting each FRF with circle fit at each mode
+    stores FRFs and raw data
+    compute and plot mode shapes
+    """
 
     def __init__(self, combined_data, freq_range, locations, res_freqs=None):
+        """
+        combined_data: a data set used to identify modes (often a combination of the FRFs at each point)
+        freq_range: frequency range of interest
+        locations: coordinates of each location for mode shape mesh
+        res_freqs: user identifies frequencies to place residuals for FRF regeneration
+        """
         self.freq_range = freq_range
         self.m = len(locations)          # number of locations
         self.locations = np.array(locations)
@@ -33,14 +45,11 @@ class ModalAnalysis():
         self.omega = np.zeros(self.n)
         self.eta = np.zeros(self.n)
 
-    def define_locations(self, locations):
-        if len(locations) == self.m:
-            self.locations = np.array(locations)
-        else:
-            print('locations must have equal length number of points')
-
 
     def curve_fit(self, data, impulse_point, response_point, interactive=True):
+        """
+        Fits a single FRF dataset with regenerated curve using CircleFit
+        """
         filtered_data = data[(data['freq (Hz)'] >= self.freq_range[0]) & (data['freq (Hz)'] <= self.freq_range[1])]
         self.data[impulse_point, response_point] = filtered_data
 
@@ -75,16 +84,20 @@ class ModalAnalysis():
             etas.append(mode.damping)
             quals.append(mode.quality_factor)
 
-        frf = SimulatedFRF(omega_rs, As, etas, self.freq_range, quality_factors=quals, res_freqs=self.residual_frequencies)
+        frf = ReconstructedFRF(omega_rs, As, etas, self.freq_range, quality_factors=quals, res_freqs=self.residual_frequencies)
         frf.calculate_residuals(data)
         frf.generate_mobility()
-        #frf.plot_mag_and_phase(data, impulse_point, response_point)
+        frf.plot_mag_and_phase(data, impulse_point, response_point)
         #frf.results()
 
         self.H[impulse_point, response_point] = frf
 
 
     def correct_modal_properties(self):
+        """
+        Performs a weighted average based on quality factors to obtain better estimates of mode properties
+        note: unfinished/not fully tested
+        """
         sum_omega = np.zeros(self.n)
         sum_eta = np.zeros(self.n)
         total_weight = np.zeros(self.n)
@@ -103,6 +116,10 @@ class ModalAnalysis():
 
 
     def calculate_mode_shapes(self, driving_point):
+        """
+        Calculates mode shapes given the index of the driving point (excitement and response at same location)
+        Driving point response is necessary, all other mode shapes calculated based on this
+        """
         driving_point_frf = self.H[driving_point, driving_point]
         if driving_point_frf == 0:
             print('no frf at this location')
@@ -116,6 +133,9 @@ class ModalAnalysis():
                 self.mode_shapes[j,r] = frf.A[r] / self.mode_shapes[driving_point, r]
 
     def plot_mode_shape(self, mode):
+        """
+        Generates a wireframe animation of specified mode
+        """
         x = self.locations[:, 0]
         y = self.locations[:, 1]
 
@@ -165,4 +185,3 @@ class ModalAnalysis():
         ani = FuncAnimation(fig, update, frames=frames, interval=50, blit=False)
 
         plt.show()
-
