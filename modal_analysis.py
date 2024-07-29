@@ -1,5 +1,5 @@
 import numpy as np
-from circle_fit import CircleFit
+from circle_fit_mobility import CircleFit
 import pandas as pd
 from interactive_peak_finder import InteractivePeakFinder
 from interactive_circle_fit import InteractiveCircleFit
@@ -9,7 +9,6 @@ from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d import Axes3D
 from scipy.interpolate import griddata
 import peak_finder
-
 
 class ModalAnalysis():
 
@@ -45,7 +44,8 @@ class ModalAnalysis():
         filtered_data = data[(data['freq (Hz)'] >= self.freq_range[0]) & (data['freq (Hz)'] <= self.freq_range[1])]
         self.data[impulse_point, response_point] = filtered_data
 
-        peaks = peak_finder.get_peaks(filtered_data, distance=10, prominence=self.prominence, plot=interactive)
+        peaks = peak_finder.get_peaks(filtered_data, distance=10, prominence=self.prominence, plot=False)
+        #peaks = self.peaks
 
         while len(peaks) != len(self.peaks):
             print('different number of peaks found')
@@ -61,12 +61,15 @@ class ModalAnalysis():
             # Interactive plot to help choose best range of points for each peak
             InteractiveCircleFit(modes)
 
+
         # store FRF
         omega_rs = []
         As = []
         etas = []
         quals = []
         for mode in modes:
+            if mode.quality_factor < 0.95:
+                InteractiveCircleFit([mode])
             omega_rs.append(mode.omega_r)
             As.append(mode.A)
             etas.append(mode.damping)
@@ -74,8 +77,9 @@ class ModalAnalysis():
 
         frf = SimulatedFRF(omega_rs, As, etas, self.freq_range, quality_factors=quals, res_freqs=self.residual_frequencies)
         frf.calculate_residuals(data)
-        if interactive:
-            frf.plot_mag_and_phase(data)
+        frf.generate_mobility()
+        #frf.plot_mag_and_phase(data, impulse_point, response_point)
+        #frf.results()
 
         self.H[impulse_point, response_point] = frf
 
@@ -88,12 +92,13 @@ class ModalAnalysis():
             for frf in row:
                 if frf != None:
                     quality_factors = frf.quality_factors
-                    sum_omega += frf.omega * quality_factors
+                    sum_omega += frf.omega_r * quality_factors
                     sum_eta += frf.eta * quality_factors
                     total_weight += quality_factors
 
         self.omega = sum_omega / total_weight
         self.eta = sum_eta / total_weight
+        print(f'resonant frequencies: {self.omega / (2*np.pi)}')
 
 
 
@@ -114,51 +119,50 @@ class ModalAnalysis():
         x = self.locations[:, 0]
         y = self.locations[:, 1]
 
-        # Initialize the z values
-        z = []
-        for i in range(self.m):
-            shape = self.mode_shapes[i, mode]
-            mag = np.abs(shape)
-            phase = np.angle(shape)
-            if abs(phase) > np.pi / 2:
-                mag = -mag
-            z.append(mag)
+        # Calculate z values
+        shape = self.mode_shapes[:, mode]
+        mag = np.abs(shape)
+        phase = np.angle(shape)
+        z = np.where(abs(phase) > np.pi / 2, -mag, mag)
 
         # Normalize z values
-        largest = max(z)
-        z = np.array(z) / largest
+        z = z / np.max(np.abs(z))
 
         # Create a grid for plotting
         X, Y = np.meshgrid(np.unique(x), np.unique(y))
         Z = griddata((x, y), z, (X, Y), method='linear')
 
         # Create the figure and axis
-        fig = plt.figure()
+        fig = plt.figure(figsize=(10,10))
         ax = fig.add_subplot(111, projection='3d')
 
-        # Plot the initial wireframe
-        wireframe = ax.plot_wireframe(X, Y, Z, color='blue')
+        # Plot the initial surface
+        surface = ax.plot_surface(X, Y, Z, color='blue')
 
-        ax.set_zlim(-1, 1)
-
+        ax.set_zlim(-2, 2)
+        ax.set_title(f'Mode {mode+1}')
         ax.set_xlabel('X axis')
         ax.set_ylabel('Y axis')
         ax.set_zlabel('Mode Shape')
 
+        # Precompute sin values for animation
+        frames = 200
+        sin_values = np.sin(np.arange(frames) / 10.0)
+
         def update(frame):
-            # Update z values by scaling them
-            scale = np.sin(frame / 10.0)  # Scale factor ranges from -1 to 1
-            Z = griddata((x, y), z * scale, (X, Y), method='linear')
-            ax.clear()  # Clear the previous plot
-            ax.plot_wireframe(X, Y, Z, color='blue')
-            ax.set_zlim(-1,1)
-            ax.set_xlabel('X axis')
-            ax.set_ylabel('Y axis')
-            ax.set_zlabel('Mode Shape')
-            return wireframe,
+            # Scale Z values
+            new_Z = Z * sin_values[frame]
+
+            # # Remove previous wireframe
+            for artist in ax.collections:
+                artist.remove()
+
+            ax.plot_surface(X, Y, new_Z, color='blue')
+
+            return surface,
 
         # Create animation
-        ani = FuncAnimation(fig, update, frames=np.arange(0, 200), interval=50, blit=False)
+        ani = FuncAnimation(fig, update, frames=frames, interval=50, blit=False)
 
         plt.show()
 

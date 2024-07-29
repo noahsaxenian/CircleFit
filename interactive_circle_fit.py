@@ -1,4 +1,4 @@
-from circle_fit import CircleFit
+from circle_fit_receptance import CircleFit
 import matplotlib.pyplot as plt
 from matplotlib.widgets import SpanSelector, Button
 import numpy as np
