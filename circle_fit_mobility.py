@@ -215,8 +215,6 @@ class CircleFit:
         self.damping = np.mean(damping_coeffs)
         self.damping_std = np.std(damping_coeffs)
 
-        print(f'lower: {len(lower_angles)} and higher: {len(higher_angles)} gives damping: {self.damping}')
-
         return self.damping, self.damping_std
 
     def calculate_modal_parameters(self):

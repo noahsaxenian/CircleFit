@@ -118,4 +118,5 @@ class InteractivePeakFinder:
         plt.show()
 
     def accept_peaks(self, event):
+        print(f'Peaks found: {self.peaks}')
         plt.close(self.fig)

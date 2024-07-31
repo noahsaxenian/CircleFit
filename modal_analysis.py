@@ -18,12 +18,13 @@ class ModalAnalysis():
     compute and plot mode shapes
     """
 
-    def __init__(self, combined_data, freq_range, locations, res_freqs=None):
+    def __init__(self, combined_data, freq_range, locations, res_freqs=None, peaks=None):
         """
         combined_data: a data set used to identify modes (often a combination of the FRFs at each point)
         freq_range: frequency range of interest
         locations: coordinates of each location for mode shape mesh
         res_freqs: user identifies frequencies to place residuals for FRF regeneration
+        peaks: user identifies modes of interest
         """
         self.freq_range = freq_range
         self.m = len(locations)          # number of locations
@@ -31,9 +32,14 @@ class ModalAnalysis():
         self.residual_frequencies = res_freqs
 
         filtered_data = combined_data[(combined_data['freq (Hz)'] >= self.freq_range[0]) & (combined_data['freq (Hz)'] <= self.freq_range[1])]
-        p = InteractivePeakFinder(filtered_data)
-        self.peaks = p.peaks
-        self.prominence = p.prominence
+        if peaks is not None:
+            self.peaks = peaks
+            self.prominence = None
+        else:
+            p = InteractivePeakFinder(filtered_data)
+            self.peaks = p.peaks
+            self.prominence = p.prominence
+
         self.n = len(self.peaks)             # number of modes
 
         self.data = np.empty((self.m, self.m), dtype=object)  # matrix to store inputted FRF data
@@ -53,8 +59,8 @@ class ModalAnalysis():
         filtered_data = data[(data['freq (Hz)'] >= self.freq_range[0]) & (data['freq (Hz)'] <= self.freq_range[1])]
         self.data[impulse_point, response_point] = filtered_data
 
-        peaks = peak_finder.get_peaks(filtered_data, distance=10, prominence=self.prominence, plot=False)
-        #peaks = self.peaks
+        # peaks = peak_finder.get_peaks(filtered_data, distance=10, prominence=self.prominence, plot=False)
+        peaks = self.peaks
 
         while len(peaks) != len(self.peaks):
             print('different number of peaks found')
@@ -62,14 +68,12 @@ class ModalAnalysis():
             p = InteractivePeakFinder(filtered_data)
             peaks = p.peaks
 
-
         # Create array of circle fits for each peak
         modes = [CircleFit(data, peak) for peak in peaks]
 
         if interactive:
             # Interactive plot to help choose best range of points for each peak
             InteractiveCircleFit(modes)
-
 
         # store FRF
         omega_rs = []
@@ -86,9 +90,11 @@ class ModalAnalysis():
 
         frf = ReconstructedFRF(omega_rs, As, etas, self.freq_range, quality_factors=quals, res_freqs=self.residual_frequencies)
         frf.calculate_residuals(data)
-        frf.generate_mobility()
-        frf.plot_mag_and_phase(data, impulse_point, response_point)
-        #frf.results()
+
+        if interactive:
+            frf.results()
+            frf.plot_mag_and_phase(data)
+
 
         self.H[impulse_point, response_point] = frf
 
@@ -139,6 +145,8 @@ class ModalAnalysis():
         x = self.locations[:, 0]
         y = self.locations[:, 1]
 
+        freq = round(self.omega[mode] / (2*np.pi), 1)
+
         # Calculate z values
         shape = self.mode_shapes[:, mode]
         mag = np.abs(shape)
@@ -160,7 +168,7 @@ class ModalAnalysis():
         surface = ax.plot_surface(X, Y, Z, color='blue')
 
         ax.set_zlim(-2, 2)
-        ax.set_title(f'Mode {mode+1}')
+        ax.set_title(f'Mode {mode+1}: {freq} Hz')
         ax.set_xlabel('X axis')
         ax.set_ylabel('Y axis')
         ax.set_zlabel('Mode Shape')

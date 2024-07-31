@@ -72,26 +72,28 @@ class ReconstructedFRF():
             self.r_w1 = (self.freq_range[0] - 100) * 2 * np.pi
             self.r_w2 = (self.freq_range[-1] + 100) * 2 * np.pi
 
-        # stiffness estimated as average of difference over five points
-        self.r_A1 = np.mean([((1 - (self.omegas[i] ** 2 / self.r_w1 ** 2)) * (data_cplx[i] - self.mobility[i]))/(self.omegas[i] * 1j) for i in range(5)])
 
-        mode1 = (self.r_A1 * self.omegas * 1j) / (1 - (self.omegas ** 2 / self.r_w1 ** 2))  # lower residual mode
+        # modal constant estimated as average of difference over five points
+        self.r_A1 = np.mean([((self.r_w1 ** 2 - self.omegas[i] ** 2) * (data_cplx[i] - self.mobility[i]))/(self.omegas[i] * 1j) for i in range(5)])
+
+        mode1 = (self.r_A1 * self.omegas * 1j) / (self.r_w1 ** 2 - self.omegas ** 2)  # lower residual mode
         mobility_cor_1 = self.mobility + mode1
 
         self.r_A2 = np.mean(
-            [((1 - (self.omegas[-i] ** 2 / self.r_w2 ** 2)) * (data_cplx[-i] - mobility_cor_1[-i]))/(self.omegas[-1] * 1j) for i in range(1, 6)])
+            [((self.r_w2 ** 2 - self.omegas[-i] ** 2) * (data_cplx[-i] - mobility_cor_1[-i]))/(self.omegas[-i] * 1j) for i in range(1, 6)])
 
-        mode2 = (self.r_A2 * self.omegas * 1j) / (1 - (self.omegas ** 2 / self.r_w2 ** 2))  # higher residual mode
+        mode2 = (self.r_A2 * self.omegas * 1j) / (self.r_w2 ** 2 - self.omegas ** 2)  # higher residual mode
 
         # re-correct mode1 in case mode2 messes up mode1
         mobility_cor_2 = self.mobility + mode2
         self.r_A1 = np.mean(
-            [((1 - (self.omegas[i] ** 2 / self.r_w1 ** 2)) * (data_cplx[i] - mobility_cor_2[i])) / (self.omegas[i] * 1j)
+            [((self.r_w1 ** 2 - self.omegas[i] ** 2) * (data_cplx[i] - mobility_cor_2[i])) / (self.omegas[i] * 1j)
              for i in range(5)])
 
-        mode1 = (self.r_A1 * self.omegas * 1j) / (1 - (self.omegas ** 2 / self.r_w1 ** 2))  # lower residual mode
+        mode1 = (self.r_A1 * self.omegas * 1j) / (self.r_w1 ** 2 - self.omegas ** 2)  # lower residual mode
 
         self.mobility_corrected = self.mobility + mode1 + mode2
+
 
     def generate_alpha(self):
         """receptance FRF"""
@@ -120,6 +122,9 @@ class ReconstructedFRF():
         print(f'natural frequencies: {self.omega_r / (2 * np.pi)}')
         print(f'damping etas: {self.eta}')
         print(f'modal constants: {self.A}')
+        print(f'modal constant phases: {np.degrees(np.angle(self.A))}')
+        print(f'lower residual A: {self.r_A1} and phase: {np.degrees(np.angle(self.r_A1))}')
+        print(f'upper residual A: {self.r_A2} and phase: {np.degrees(np.angle(self.r_A2))}')
 
 
     def plot_mag_and_phase(self, data, impulse=None, response=None):
@@ -155,7 +160,7 @@ class ReconstructedFRF():
         # Create the first subplot (3/4 of the area)
         ax1 = fig.add_subplot(gs[0:3, 0])
         ax1.plot(data_freqs, data_mag, label='Experimental')
-        #ax1.plot(self.frequencies, magnitude, label='Reconstructed')
+        ax1.plot(self.frequencies, magnitude, label='Without Residuals')
         ax1.plot(self.frequencies, magnitude_cor, label='Reconstructed')
         ax1.set_xlabel('Frequency')
         ax1.set_ylabel('Magnitude')
@@ -166,7 +171,7 @@ class ReconstructedFRF():
         # Create the second subplot (1/4 of the area)
         ax2 = fig.add_subplot(gs[3, 0])
         ax2.plot(data_freqs, data_phase, label='Experimental')
-        #ax2.plot(self.frequencies, phase, label='Reconstructed')
+        ax2.plot(self.frequencies, phase, label='Without Residuals')
         ax2.plot(self.frequencies, phase_cor, label='Reconstructed')
         ax2.set_xlabel('Frequency')
         ax2.set_ylabel('Phase')

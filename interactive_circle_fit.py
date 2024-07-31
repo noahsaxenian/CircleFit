@@ -129,7 +129,7 @@ class InteractiveCircleFit:
 
     def accept_range(self, event):
         #plt.close(self.fig)
-        self.circle_fit.summarize_results()
+        #self.circle_fit.summarize_results()
         self.update_circle()
 
     def update_circle(self):
