@@ -161,7 +161,7 @@ class ModalAnalysis():
         Z = griddata((x, y), z, (X, Y), method='linear')
 
         # Create the figure and axis
-        fig = plt.figure(figsize=(10,10))
+        fig = plt.figure(figsize=(6,6))
         ax = fig.add_subplot(111, projection='3d')
 
         # Plot the initial surface
