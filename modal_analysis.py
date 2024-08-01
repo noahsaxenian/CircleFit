@@ -88,6 +88,7 @@ class ModalAnalysis():
             etas.append(mode.damping)
             quals.append(mode.quality_factor)
 
+
         frf = ReconstructedFRF(omega_rs, As, etas, self.freq_range, quality_factors=quals, res_freqs=self.residual_frequencies)
         frf.calculate_residuals(data)
 
