@@ -1,7 +1,6 @@
-from circle_fit_receptance import CircleFit
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
-from matplotlib.widgets import SpanSelector, Button
+from matplotlib.widgets import Button
 import numpy as np
 from scipy.signal import find_peaks
 

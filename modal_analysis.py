@@ -1,14 +1,9 @@
-import numpy as np
-from circle_fit_mobility import CircleFit
-import pandas as pd
-from interactive_peak_finder import InteractivePeakFinder
-from interactive_circle_fit import InteractiveCircleFit
+from interactive_circle_fit import interactive_circle_fit
 from reconstructed_frf import ReconstructedFRF
-import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-from mpl_toolkits.mplot3d import Axes3D
 from scipy.interpolate import griddata
-import peak_finder
+from sdof import *
+from multi_peak_detect import *
 
 class ModalAnalysis():
     """
@@ -18,31 +13,29 @@ class ModalAnalysis():
     compute and plot mode shapes
     """
 
-    def __init__(self, combined_data, freq_range, locations, res_freqs=None, peaks=None):
+    def __init__(self, all_data, locations, res_freqs=None, peaks=None):
         """
-        combined_data: a data set used to identify modes (often a combination of the FRFs at each point)
-        freq_range: frequency range of interest
+        all_data: matrix of pandas data frames.
+            all_data[i, j] is data for impulse point i and response point j
+            columns "freq (Hz)", "real", "complex"
         locations: coordinates of each location for mode shape mesh
         res_freqs: user identifies frequencies to place residuals for FRF regeneration
         peaks: user identifies modes of interest
         """
-        self.freq_range = freq_range
         self.m = len(locations)          # number of locations
         self.locations = np.array(locations)
         self.residual_frequencies = res_freqs
 
-        filtered_data = combined_data[(combined_data['freq (Hz)'] >= self.freq_range[0]) & (combined_data['freq (Hz)'] <= self.freq_range[1])]
+        self.data = all_data  # matrix to store inputted FRF data
+
         if peaks is not None:
             self.peaks = peaks
-            self.prominence = None
         else:
-            p = InteractivePeakFinder(filtered_data)
-            self.peaks = p.peaks
-            self.prominence = p.prominence
+            self.peaks = self.detect_peaks()
+            print(self.peaks)
 
         self.n = len(self.peaks)             # number of modes
 
-        self.data = np.empty((self.m, self.m), dtype=object)  # matrix to store inputted FRF data
         self.H = np.full((self.m, self.m), None, dtype=object)  # matrix to store simulated FRFs
         self.mode_shapes = np.zeros((self.m, self.n), dtype=np.complex128)  # self.mode_shapes[k,r] is mode r at point k
 
@@ -52,52 +45,68 @@ class ModalAnalysis():
         self.eta = np.zeros(self.n)
 
 
-    def curve_fit(self, data, impulse_point, response_point, interactive=True):
+
+    def detect_peaks(self):
+        data_list = [x for x in self.data.ravel() if x is not None]
+        frequencies = np.array([data['freq (Hz)'] for data in data_list])
+        real = [data['real'] for data in data_list]
+        imaginary = [data['complex'] for data in data_list]
+        magnitudes = np.array([np.sqrt(re**2 + im**2) for (re, im) in zip(real, imaginary)])
+
+        peaks = multi_peak_detect(frequencies, magnitudes)
+
+        return peaks
+
+
+    def fit_all(self):
+        """fits all inputted FRFs"""
+        for i in range(self.data.shape[0]):  # Loop over rows
+            for j in range(self.data.shape[1]):  # Loop over columns
+                if self.data[i, j] is not None:
+                    self.H[i, j] = self.curve_fit(self.data[i,j], interactive=True)
+
+    def fit_frf(self, impulse_point, response_point):
+        self.H[i, j] = self.curve_fit(self.data[impulse_point, response_point], interactive=True)
+
+
+    def curve_fit(self, data, interactive=True):
         """
         Fits a single FRF dataset with regenerated curve using CircleFit
         """
-        filtered_data = data[(data['freq (Hz)'] >= self.freq_range[0]) & (data['freq (Hz)'] <= self.freq_range[1])]
-        self.data[impulse_point, response_point] = filtered_data
-
-        # peaks = peak_finder.get_peaks(filtered_data, distance=10, prominence=self.prominence, plot=False)
-        peaks = self.peaks
-
-        while len(peaks) != len(self.peaks):
-            print('different number of peaks found')
-            # find peaks and ranges
-            p = InteractivePeakFinder(filtered_data)
-            peaks = p.peaks
-
-        # Create array of circle fits for each peak
-        modes = [CircleFit(data, peak) for peak in peaks]
-
-        if interactive:
-            # Interactive plot to help choose best range of points for each peak
-            InteractiveCircleFit(modes)
+        frequencies = data['freq (Hz)'].values
+        real = data['real'].values
+        imaginary = data['complex'].values
+        magnitudes = np.abs(real**2 + imaginary**2)
 
         # store FRF
         omega_rs = []
         As = []
         etas = []
         quals = []
-        for mode in modes:
-            if mode.quality_factor < 0.95:
-                InteractiveCircleFit([mode])
-            omega_rs.append(mode.omega_r)
-            As.append(mode.A)
-            etas.append(mode.damping)
-            quals.append(mode.quality_factor)
+        for peak in self.peaks:
+            start, end = filter_data(frequencies, magnitudes, peak)
+
+            params = circle_fit(frequencies[start:end], real[start:end], imaginary[start:end])
+
+            if params['quality_factor'] < 0.999:
+                params = interactive_circle_fit(frequencies, real, imaginary, peak)
+
+            omega_rs.append(params['omega_r'])
+            As.append(params['A'])
+            etas.append(params['eta_r'])
+            quals.append(params['quality_factor'])
 
 
-        frf = ReconstructedFRF(omega_rs, As, etas, self.freq_range, quality_factors=quals, res_freqs=self.residual_frequencies)
-        frf.calculate_residuals(data)
+
+        freq_range = (frequencies[0], frequencies[-1])
+        frf = ReconstructedFRF(omega_rs, As, etas, freq_range, quality_factors=quals)
+        frf.calculate_residuals(frequencies, real, imaginary)
 
         if interactive:
             frf.results()
-            frf.plot_mag_and_phase(data)
+            #frf.plot_mag_and_phase(data)
 
-
-        self.H[impulse_point, response_point] = frf
+        return frf
 
 
     def correct_modal_properties(self):
@@ -139,6 +148,7 @@ class ModalAnalysis():
                 frf = self.H[j, driving_point]
                 self.mode_shapes[j,r] = frf.A[r] / self.mode_shapes[driving_point, r]
 
+
     def plot_mode_shape(self, mode):
         """
         Generates a wireframe animation of specified mode
@@ -157,9 +167,20 @@ class ModalAnalysis():
         # Normalize z values
         z = z / np.max(np.abs(z))
 
-        # Create a grid for plotting
-        X, Y = np.meshgrid(np.unique(x), np.unique(y))
-        Z = griddata((x, y), z, (X, Y), method='linear')
+        # # Create a grid for plotting
+        # X, Y = np.meshgrid(np.unique(x), np.unique(y))
+        # Z = griddata((x, y), z, (X, Y), method='linear')
+
+        # Create a finer grid for plotting
+        x_range = np.linspace(np.min(x), np.max(x), 20)  # Increase the number of points for more density
+        y_range = np.linspace(np.min(y), np.max(y), 20)  # Increase the number of points for more density
+        X, Y = np.meshgrid(x_range, y_range)
+
+        Z = griddata((x, y), z, (X, Y), method='cubic')
+
+        # Check if Z has NaN values in the gap area
+        if np.any(np.isnan(Z)):
+            print("Warning: Z contains NaN values in the gap area.")
 
         # Create the figure and axis
         fig = plt.figure(figsize=(6,6))
