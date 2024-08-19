@@ -12,8 +12,8 @@ def interactive_circle_fit(frequencies, real, imaginary, peak):
 
     start, end = filter_data(frequencies, magnitudes, peak)
     params = circle_fit(frequencies[start:end], real[start:end], imaginary[start:end])
-    if params['quality_factor'] > 0.999:
-        return params
+    #if params['quality_factor'] > 0.999:
+    #    return params
 
     def update(freq_min, freq_max):
         nonlocal params
@@ -27,7 +27,11 @@ def interactive_circle_fit(frequencies, real, imaginary, peak):
         params = circle_fit(frequencies[start:end], real[start:end], imaginary[start:end])
         h, k, r = params['h'], params['k'], params['r']
         theta_r = params['theta_r']
-        resonant_frequency = params['resonant_frequency']
+        eta_r = np.round(params['eta_r'], 4)
+        A = params['A']
+        magA = np.round(np.abs(A), 1)
+        phaseA = np.round(np.degrees(np.angle(A)), 1)
+        resonant_frequency = np.round(params['resonant_frequency'], 1)
 
         points = np.linspace(0, 2 * np.pi, 100)
         x_fit = h + r * np.cos(points)
@@ -35,9 +39,13 @@ def interactive_circle_fit(frequencies, real, imaginary, peak):
         x_pos = h + r * np.cos(theta_r)
         y_pos = k + r * np.sin(theta_r)
 
+        title = f'Resonant Freq: {resonant_frequency} | Damping: {eta_r} | Magnitude: {magA} | phase: {phaseA}'
+        fig.suptitle(title)
+
         # Update magnitude plot
         axs[0].cla()
-        axs[0].plot(frequencies[start - 10:end + 10], magnitudes[start - 10:end + 10], label='Magnitude')
+        axs[0].plot(frequencies[start - 20:end + 20], magnitudes[start - 20:end + 20], label='Magnitude')
+        axs[0].axvline(x=peak, color='r', linestyle='--', label='peak estimate')
         axs[0].plot(resonant_frequency, max(magnitudes[start:end]), 'x', color='g')
         axs[0].set_xlabel('Frequency')
         axs[0].set_ylabel('Magnitude')
@@ -103,5 +111,3 @@ def interactive_circle_fit(frequencies, real, imaginary, peak):
     plt.show()
 
     return params
-
-

@@ -71,7 +71,7 @@ def filter_data(frequencies, magnitudes, freq_est, db_threshold=3, freq_range=No
 
         # Ensure indices are within the valid range
         start_index = max(0, start_index)
-        end_index = min(len(frequencies), end_index)
+        end_index = min(len(frequencies) - 1, end_index)
 
     if end_index - start_index < 4:
         print('Range includes too few points, increasing to 5 points')
@@ -158,12 +158,18 @@ def circle_fit(frequencies, real, imag, plot=False):
     eta_r = np.mean(damping_coeffs)
     damping_std = np.std(damping_coeffs)
     damping_spread = (damping_std / eta_r) * 100
+    if np.isnan(eta_r):
+        print(f"failed to find eta, setting to 0")
+        eta_r = 0
+
 
     ### MODAL CONSTANT ###
     magA = omega_r * eta_r * 2 * r
     A = magA * np.cos(theta_r) + 1j * magA * np.sin(theta_r)
 
     if plot:
+
+
         points = np.linspace(0, 2 * np.pi, 100)
         x_fit = h + r * np.cos(points)
         y_fit = k + r * np.sin(points)
@@ -171,6 +177,9 @@ def circle_fit(frequencies, real, imag, plot=False):
         y_pos = k + r * np.sin(theta_r)
 
         plt.figure(figsize=(12, 6))
+        title = f'Resonant Freq: {resonant_frequency} | Damping: {eta_r} | Magnitude: {magA} | phase: {np.angle(A)}'
+        plt.suptitle(title)
+
         plt.subplot(1, 2, 1)
         plt.plot(frequencies, mag)
         plt.plot(resonant_frequency, max(mag), 'x', color='g')

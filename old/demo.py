@@ -1,4 +1,4 @@
-from modal_analysis import ModalAnalysis
+from modal_model import ModalAnalysis
 import pandas as pd
 import numpy as np
 

@@ -141,10 +141,11 @@ class ReconstructedFRF():
 
         data_freqs = filtered_data['freq (Hz)'].values
         data_real = filtered_data['real'].values
-        data_imag = filtered_data['complex'].values
+        headers = filtered_data.columns.tolist()
+        data_imag = filtered_data[headers[2]].values
+
         data_mag = np.sqrt(data_real ** 2 + data_imag ** 2)
         data_phase = np.arctan2(data_imag, data_real)
-
 
         fig = plt.figure(figsize=(12, 6))
         title = 'Mobility'

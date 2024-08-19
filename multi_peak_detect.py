@@ -73,7 +73,7 @@ def multi_peak_detect(all_frequencies, all_magnitudes):
         ax.set_yscale('log')
         ax.set_xlabel('Frequency (Hz)')
         ax.set_ylabel('Magnitude')
-        ax.set_ylim(bottom=100)
+        #ax.set_ylim(bottom=100)
         ax.set_title('Magnitude vs Frequency for Multiple Arrays')
 
         fig.canvas.draw_idle()
