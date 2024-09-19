@@ -7,7 +7,7 @@ file_path = f'C:/Users/noahs/Documents/ceeo/modal stuff/data/Plate/Plate_full_26
 
 raw_data = pd.read_csv(file_path, delimiter='\t')
 
-freq_range = [100, 2500]
+freq_range = [240, 270]
 filtered_data = raw_data[(raw_data['freq (Hz)'] >= freq_range[0]) & (raw_data['freq (Hz)'] <= freq_range[1])]
 
 num_locations = 1

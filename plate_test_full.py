@@ -30,13 +30,13 @@ locations = [(-60.0, 60.0, 0.0), (-30.0, 60.0, 0.0), (0.0, 60.0, 0.0),
 
 plate = ModalModel(data, locations)
 
-mesh_path = 'C:/Users/noahs/Downloads/fine_square_mesh.stl'
-stl_mesh = mesh.Mesh.from_file(mesh_path)
-plate.set_mesh(stl_mesh)
-
-plate.fit_all(interactive=True)
-plate.correct_modal_properties()
-plate.calculate_mode_shapes(driving_point=driving_point_location-1)
+# mesh_path = 'C:/Users/noahs/Downloads/fine_square_mesh.stl'
+# stl_mesh = mesh.Mesh.from_file(mesh_path)
+# plate.set_mesh(stl_mesh)
+#
+# plate.fit_all(interactive=True)
+# plate.correct_modal_properties()
+# plate.calculate_mode_shapes(driving_point=driving_point_location-1)
 
 
 #plate.save_to_file('plate')

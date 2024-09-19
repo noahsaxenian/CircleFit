@@ -95,7 +95,7 @@ class ModalModel():
         frf = self.H[i, j]
         if frf is not None:
             frf.plot_mag_and_phase(self.data[i, j])
-            #frf.results()
+            frf.results()
         elif self.data[i, j] is not None:
             print('data is not yet fitted')
         else:
@@ -128,6 +128,8 @@ class ModalModel():
 
                 if params['quality_factor'] < 0.999:
                     params = interactive_circle_fit(frequencies, real, imaginary, peak)
+
+            new_params = just_fit(frequencies[start:end], real[start:end], imaginary[start:end])
 
             omega_rs.append(params['omega_r'])
             As.append(params['A'])
@@ -193,16 +195,14 @@ class ModalModel():
         return shape
 
 
-    def plot_mode_shape(self, mode, interpolation='spline'):
+    def plot_mode_shape(self, mode, interpolation='spline', reinterpolate=False, gif_filename=None):
         if mode >= self.n:
             print('no mode found')
             return
 
-        self.mesh_shapes['voronoi'] = np.full(self.n, None, dtype=object)
-
         measured_shape = self.get_mode_shape(mode)
 
-        if self.mesh_shapes[interpolation][mode] is None:
+        if self.mesh_shapes[interpolation][mode] is None or reinterpolate:
             if interpolation == 'mds':
                 if self.landmark_vertices is None:
                     print('define landmark vertices first')
@@ -217,13 +217,66 @@ class ModalModel():
 
         mesh_shape = self.mesh_shapes[interpolation][mode]
 
-        mode_shape_plotter.animate_3D(self.mesh, mesh_shape, self.locations, measured_shape)
-        return
+        if gif_filename is None:
+            mode_shape_plotter.animate_3D(self.mesh, mesh_shape, self.locations, measured_shape)
+        else:
+            mode_shape_plotter.animate_gif(self.mesh, mesh_shape, self.locations, measured_shape, gif_filename)
 
-    def set_landmark_vertices(self, n_landmarks, cutout=None):
-        """cutout is [xmin, xmax, ymin, ymax] rectangular bounds to determine edges of internal cutout"""
 
+    def auto_select_landmarks(self, spacing=0, grid_points=None):
         vertices = self.mesh.vectors.reshape(-1, 3)
+        sources = []
+
+        if grid_points is not None:
+            num = int(np.sqrt(grid_points)) + 2
+            x_range = np.linspace(np.min(vertices[:,0]), np.max(vertices[:,0]), num)
+            y_range = np.linspace(np.min(vertices[:,1]), np.max(vertices[:,1]), num)
+            grid = [[x, y, 0.0] for x in x_range[1:-1] for y in y_range[1:-1]]
+
+            for loc in grid:
+                dist = np.linalg.norm(vertices - loc, axis=1)
+                closest_vertex_index = np.argmin(dist)
+                sources.append(vertices[closest_vertex_index])
+
+
+        for loc in self.locations:
+            dist = np.linalg.norm(vertices - loc, axis=1)
+            closest_vertex_index = np.argmin(dist)
+            sources.append(vertices[closest_vertex_index])
+
+        boundary_vertices = list(mode_shape_plotter.get_boundaries(self.mesh))
+
+        for a in boundary_vertices:
+            indices_to_remove = []
+            for i, b in enumerate(boundary_vertices):
+                dist = np.linalg.norm(np.array(a) - np.array(b))
+                if dist != 0 and dist < spacing:
+                    indices_to_remove.append(i)
+
+            indices_to_remove.sort(reverse=True)
+            for index in indices_to_remove:
+                boundary_vertices.pop(index)
+
+        landmark_vertices = boundary_vertices
+
+        for source in sources:
+            landmark_vertices.append(source)
+
+        print(landmark_vertices)
+
+        landmark_vertices = np.unique(np.array(landmark_vertices), axis=0)
+
+        landmark_vertices = [tuple(vertex) for vertex in landmark_vertices]
+
+        self.landmark_vertices = landmark_vertices
+
+        plot_landmarks(self.mesh, landmark_vertices)
+
+
+    def select_landmarks(self):
+        vertices = self.mesh.vectors.reshape(-1, 3)
+
+        landmark_vertices = select_points(self.mesh)
 
         sources = []
         for loc in self.locations:
@@ -231,20 +284,6 @@ class ModalModel():
             closest_vertex_index = np.argmin(dist)
             sources.append(vertices[closest_vertex_index])
 
-        landmark_vertices = []
-        n_other = n_landmarks - len(sources)
-        if cutout is not None:
-            xmin, xmax, ymin, ymax = cutout
-            boundary_vertices = mode_shape_plotter.get_internal_boundaries(self.mesh, 0, 70, -70, 70)
-
-            if n_other < len(boundary_vertices):
-                landmark_indices = np.random.choice(len(boundary_vertices), n_other, replace=False)
-            else:
-                landmark_indices = np.arange(len(boundary_vertices))
-            landmark_vertices = [boundary_vertices[i] for i in landmark_indices]
-        else:
-            # pick random points
-            landmark_vertices = vertices[np.random.choice(vertices.shape[0], size=n_other, replace=False)]
         for source in sources:
             landmark_vertices.append(source)
 
@@ -253,7 +292,6 @@ class ModalModel():
         landmark_vertices = [tuple(vertex) for vertex in landmark_vertices]
 
         self.landmark_vertices = landmark_vertices
-
 
     def calculate_distance_matrix(self):
         if self.landmark_vertices is None:
@@ -271,6 +309,8 @@ class ModalModel():
                     graph[v2].append(v1)
 
         self.distance_matrix = landmark_dijkstra(graph, self.landmark_vertices)
+        if np.isinf(self.distance_matrix).any():
+            print("Distance matrix contains infinity values.")
 
 
     def plot_mode_shape_old(self, mode):

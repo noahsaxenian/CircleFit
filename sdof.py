@@ -129,6 +129,12 @@ def circle_fit(frequencies, real, imag, plot=False):
         index = np.argmin(dtheta_df)
         resonant_frequency = frequencies_dense[index]
         theta_r = spline(resonant_frequency)
+
+        # plt.figure()
+        # plt.plot(frequencies, angles)
+        # plt.plot(frequencies_dense, angles_dense)
+        # plt.show()
+
     except Exception as e:
         print(f"Spline fitting failed: {e}")
         print("Using max point")
@@ -168,8 +174,6 @@ def circle_fit(frequencies, real, imag, plot=False):
     A = magA * np.cos(theta_r) + 1j * magA * np.sin(theta_r)
 
     if plot:
-
-
         points = np.linspace(0, 2 * np.pi, 100)
         x_fit = h + r * np.cos(points)
         y_fit = k + r * np.sin(points)
@@ -200,7 +204,6 @@ def circle_fit(frequencies, real, imag, plot=False):
         plt.title('Circle Fit to Mode Data')
         plt.show()
 
-
     ### RESULTS ###
     results = {
         "resonant_frequency": resonant_frequency,
@@ -215,3 +218,89 @@ def circle_fit(frequencies, real, imag, plot=False):
     }
 
     return results
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import least_squares
+
+def just_fit(frequencies, real, imag):
+    # Example complex function to fit
+    def complex_func(x, A_real, A_imag, omega_r, eta_r):
+        # A is split into real and imaginary components
+        A = A_real + 1j * A_imag
+        return (A * x * 1j) / (omega_r ** 2 - x ** 2 + 1j * eta_r * omega_r ** 2)
+
+    # Residual function that combines real and imaginary parts
+    def residuals(params, x_data, y_data):
+        A_real, A_imag, omega_r, eta_r = params
+        model = complex_func(x_data, A_real, A_imag, omega_r, eta_r)
+        residual = np.concatenate([np.real(model - y_data), np.imag(model - y_data)])
+        return residual
+
+    x_data = frequencies * 2 * np.pi
+    y_data = real + imag * 1j
+
+    # Use an initial guess from circle fit or any other source
+    circle = circle_fit(frequencies, real, imag)
+    # Split A into real and imaginary parts if necessary
+    A_real = np.real(circle["A"])
+    A_imag = np.imag(circle["A"])
+    initial_guess = [A_real, A_imag, circle["omega_r"], circle["eta_r"]]
+    print(f"Initial guess: {initial_guess}")
+
+    # Reconstruct using the initial guess
+    initial_model = complex_func(x_data, *initial_guess)
+
+    # Fit the data using least_squares
+    result = least_squares(residuals, initial_guess, args=(x_data, y_data))
+
+    # Extract the fitted parameters
+    fitted_params = result.x
+    A_fitted = fitted_params[0] + 1j * fitted_params[1]
+    omega_r_fitted = fitted_params[2]
+    eta_r_fitted = fitted_params[3]
+
+    print(f"Fitted A: {A_fitted}, omega_r: {omega_r_fitted}, eta_r: {eta_r_fitted}")
+
+    # Reconstruct using the fitted parameters
+    final_model = complex_func(x_data, fitted_params[0], fitted_params[1], fitted_params[2], fitted_params[3])
+
+    # Compute magnitude and phase for data, initial guess, and final fit
+    magnitude_data = np.abs(y_data)
+    phase_data = np.angle(y_data)
+
+    magnitude_initial = np.abs(initial_model)
+    phase_initial = np.angle(initial_model)
+
+    magnitude_final = np.abs(final_model)
+    phase_final = np.angle(final_model)
+
+    # Plot magnitude and phase on one figure
+    plt.figure(figsize=(10, 5))
+
+    # Plot magnitude
+    plt.subplot(1, 2, 1)
+    plt.plot(frequencies, magnitude_data, label='Data (Magnitude)', marker='o', linestyle='None')
+    plt.plot(frequencies, magnitude_initial, label='Initial Guess from Circle Fit (Magnitude)', linestyle='--')
+    plt.plot(frequencies, magnitude_final, label='Final Fit (Magnitude)', linestyle='-')
+    plt.title('Magnitude')
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Magnitude')
+    plt.legend()
+
+    # Plot phase
+    plt.subplot(1, 2, 2)
+    plt.plot(frequencies, phase_data, label='Data (Phase)', marker='o', linestyle='None')
+    plt.plot(frequencies, phase_initial, label='Initial Guess from Circle Fit (Phase)', linestyle='--')
+    plt.plot(frequencies, phase_final, label='Final Fit (Phase)', linestyle='-')
+    plt.title('Phase')
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Phase (radians)')
+    plt.legend()
+
+    plt.suptitle('Reconstructed Data with Initial Guess and Final Fit (Magnitude and Phase)')
+    plt.tight_layout()
+    plt.show()
+
+    return fitted_params

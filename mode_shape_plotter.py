@@ -8,10 +8,8 @@ import heapq
 import pyvista as pv
 import time
 from matplotlib.colors import ListedColormap
-import networkx as nx
 from scipy.interpolate import RBFInterpolator, griddata
 from sklearn.manifold import MDS
-
 
 
 def select_points(your_mesh):
@@ -57,8 +55,36 @@ def select_points(your_mesh):
 
     return selected_points
 
+def plot_landmarks(your_mesh, landmark_vertices):
+    # Extract vertices
+    vertices = your_mesh.vectors.reshape(-1, 3)
 
-def get_internal_boundaries(your_mesh, xmin, xmax, ymin, ymax, plot=False):
+    # Determine the range for each axis
+    x_range = vertices[:, 0].max() - vertices[:, 0].min()
+    y_range = vertices[:, 1].max() - vertices[:, 1].min()
+    max_range = max(x_range, y_range)
+    x_center = (vertices[:, 0].max() + vertices[:, 0].min()) / 2
+    y_center = (vertices[:, 1].max() + vertices[:, 1].min()) / 2
+
+    # Create a 2D plot (top-down view) for point selection
+    fig, ax = plt.subplots()
+    sc = ax.scatter(vertices[:, 0], vertices[:, 1], c='blue', s=5)
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+
+    # Set equal aspect ratio and adjust limits
+    ax.set_aspect('equal')
+    ax.set_xlim(x_center - max_range / 2, x_center + max_range / 2)
+    ax.set_ylim(y_center - max_range / 2, y_center + max_range / 2)
+
+    x_values = [item[0] for item in landmark_vertices]
+    y_values = [item[1] for item in landmark_vertices]
+    ax.scatter(x_values, y_values, c='red', s=50, edgecolors='black')
+
+    plt.show()
+
+
+def get_boundaries(your_mesh, plot=False):
     # Create a dictionary to keep track of edges
     edges_dict = {}
     vertices_on_boundary_edges = set()
@@ -75,30 +101,14 @@ def get_internal_boundaries(your_mesh, xmin, xmax, ymin, ymax, plot=False):
             vertices_on_boundary_edges.update(edge)
     boundary_vertices = np.array(list(vertices_on_boundary_edges))
 
-    internal_boundary_vertices = []
-    for vertex in boundary_vertices:
-        if xmin < vertex[0] and vertex[0] < xmax:
-            if ymin < vertex[1] and vertex[1] < ymax:
-                internal_boundary_vertices.append(vertex)
-    internal_boundary_vertices = np.array(internal_boundary_vertices)
-
     if plot:
         plotter = pv.Plotter()
-
-        # Add the mesh to the plotter
         mesh_pv = pv.PolyData(your_mesh.vectors.reshape(-1, 3))
         plotter.add_mesh(mesh_pv, opacity=0.5)
-
-        # Add boundary vertices to the plot
         plotter.add_points(boundary_vertices, color='red', point_size=10, render_points_as_spheres=True)
-
-        # Add internal boundary vertices to the plot
-        plotter.add_points(internal_boundary_vertices, color='blue', point_size=10, render_points_as_spheres=True)
-
-        # Display the plot
         plotter.show()
 
-    return internal_boundary_vertices
+    return boundary_vertices
 
 
 def multi_source_dijkstra(graph, sources):
@@ -463,7 +473,7 @@ def interpolate_multidimensional(your_mesh, landmark_vertices, distance_matrix, 
 
     # Apply MDS
     print('Applying multidimensional scaling...')
-    mds = MDS(n_components=8, dissimilarity='precomputed', max_iter=10000, n_init=3, eps=1e-12)
+    mds = MDS(n_components=5, dissimilarity='precomputed', max_iter=20000, n_init=5, eps=1e-12)
 
     transformed_landmarks = mds.fit_transform(distance_matrix)
 
@@ -487,10 +497,8 @@ def interpolate_multidimensional(your_mesh, landmark_vertices, distance_matrix, 
             difference = np.abs(original_distance - new_distance)
             differences.append(difference)
     differences = np.sort(differences)[::-1]
-    print('differences between distances along mesh and in multidimensional space:')
     print(differences)
 
-    print('Interpolating...')
     interpolator = RBFInterpolator(transformed_locations, measured_shapes, kernel='thin_plate_spline')
 
     landmark_shapes = interpolator(transformed_landmarks)
@@ -507,8 +515,6 @@ def animate_3D(your_mesh, mode_shapes, measurement_locations, measured_shapes):
     vertices = your_mesh.vectors.reshape(-1, 3)
     faces = np.column_stack((np.full(len(your_mesh.vectors), 3), np.arange(len(vertices)).reshape(-1, 3))).ravel()
 
-
-    print('plotting')
     pv_mesh = pv.PolyData(vertices, faces)
     pv_mesh.point_data["mode_shape"] = mode_shapes
 
@@ -558,4 +564,50 @@ def animate_3D(your_mesh, mode_shapes, measurement_locations, measured_shapes):
         t += 0.005  # Adjust this to control the speed of oscillation
 
     plotter.clear()
+    plotter.close()
+
+
+def animate_gif(your_mesh, mode_shapes, measurement_locations, measured_shapes, filename):
+    max_shape = np.max(np.abs(measured_shapes))
+    measured_shapes = measured_shapes/max_shape
+    mode_shapes = mode_shapes/max_shape
+
+    vertices = your_mesh.vectors.reshape(-1, 3)
+    faces = np.column_stack((np.full(len(your_mesh.vectors), 3), np.arange(len(vertices)).reshape(-1, 3))).ravel()
+
+    pv_mesh = pv.PolyData(vertices, faces)
+    pv_mesh.point_data["mode_shape"] = mode_shapes
+
+    plotter = pv.Plotter()
+    color_map = 'rainbow'
+    mesh_actor = plotter.add_mesh(pv_mesh, scalars="mode_shape", lighting=False, cmap=color_map, show_scalar_bar=False, interpolate_before_map=False)
+
+    points = pv.PolyData(measurement_locations)
+    points_actor = plotter.add_mesh(points, color="black", point_size=10)
+
+    plotter.camera_position = [(-29.700539986179727, 373.75240856648475, 165.43669893914324),
+ (0.0, 0.0, 0.0),
+ (-0.025317296128415358, -0.40630979968616876, 0.9133845746429768)]
+
+    fps = 30
+    cycles_per_second = 0.5
+    n_frames = int(fps/cycles_per_second)
+    plotter.open_gif(f"{filename}.gif", fps=fps)
+    for i in range(n_frames):
+        # Calculate the displacement factor
+        displacement = np.sin(2 * np.pi * i/n_frames) * 10
+
+        updated_vertices = vertices.copy()
+        updated_vertices[:, 2] += displacement * mode_shapes
+        pv_mesh.points = updated_vertices
+
+        updated_locations = np.array(measurement_locations.copy())
+        updated_locations[:, 2] += displacement * measured_shapes
+        points.points = updated_locations
+
+        mesh_actor.GetMapper().Update()
+        points_actor.GetMapper().Update()
+
+        plotter.write_frame()
+
     plotter.close()

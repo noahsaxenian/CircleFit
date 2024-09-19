@@ -3,6 +3,7 @@ from matplotlib.widgets import SpanSelector, Button
 import numpy as np
 from sdof import circle_fit, filter_data
 
+
 def interactive_circle_fit(frequencies, real, imaginary, peak):
     magnitudes = np.abs(real**2 + imaginary**2)
     params = None

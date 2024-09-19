@@ -57,15 +57,3 @@ plate.calculate_mode_shapes(driving_point=driving_point_location-1)
 
 plate.set_landmark_vertices(100, [0, 70, -70, 70])
 plate.calculate_distance_matrix()
-
-with open('plate_cutout.pkl', 'wb') as file:
-    pickle.dump(plate, file)
-# plate.plot_mode_shape(0)
-
-
-# measured_shape = np.array(plate.get_mode_shape(0))
-# print(measured_shape)
-#
-# max_shape = np.max(np.abs(measured_shape))
-# measured_shape = measured_shape/max_shape
-# animate_3D(stl_mesh, locations, measured_shape)
